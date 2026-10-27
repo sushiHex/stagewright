@@ -1,8 +1,8 @@
 # stagewright
 
 Parametric OpenUSD worlds, built from source. The repo will hold several procedural models; the first
-(and so far only) one is described below, and its files still sit at the repo root (moving it under a
-per-model layout is task 11 in `docs/plan.md`).
+(and so far only) one is described below. Its assets, scenes, documentation and public media live
+under `models/wind_tunnel/`; shared helpers and command-line tools stay in `tools/`.
 
 The first model is a presentation-quality open-jet automotive wind tunnel test section, authored in OpenUSD and rendered
 headless with NVIDIA RTX (`ovrtx`). It is built to drop into the environment slot of NVIDIA's
@@ -31,7 +31,7 @@ stay; never claim "no numpy" or "100%" in the README, claim "every stage is NVID
 - Do not vendor the blueprint. Clone it to `external/` (gitignored) with `GIT_LFS_SKIP_SMUDGE=1`.
 - The Ahmed body is a presentation prop. It lives in the presentation root, never inside the
   environment payload.
-- Use CC0 assets only (Poly Haven). Record each asset and its licence in `docs/assets.md`.
+- Use CC0 assets only (Poly Haven). Record each asset and its licence in `models/wind_tunnel/docs/assets.md`.
 
 ## Stage contract (from the blueprint source, recorded 2026-10-26)
 
@@ -45,7 +45,7 @@ stay; never claim "no numpy" or "100%" in the README, claim "every stage is NVID
 - CameraMAIN_00: translate (-776.9, 653.6, 411.0), rotateYXZ (70.68, 0, -125.66), focal 18.15,
   aperture 20.955 x 15.29.
 - Override shape (an explicit list-op; never `prepend`, never clear-then-add):
-  `over "World" { over "WindTunnel" ( payload = [@./assets/test_section.usda@</Environment>] ) {} }`
+  `over "World" { over "WindTunnel" ( payload = [@./models/wind_tunnel/assets/test_section.usda@</Environment>] ) {} }`
   in a root layer that sublayers their `Main.usda`.
 
 ## Environment

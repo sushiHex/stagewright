@@ -1,7 +1,7 @@
 # Render stills from a presentation scene with ovrtx (headless RTX path tracing).
 #   python tools/render.py                                   all products, 960x540, 64 spp
 #   python tools/render.py --products Hero,Main --spp 256 --res 1920x1080
-#   python tools/render.py --scene scenes/present_payload.usda --products Hero
+#   python tools/render.py --scene models/wind_tunnel/scenes/present_payload.usda --products Hero
 #
 # Runs in its own process: it never imports pxr, since ovrtx bundles its own USD runtime.
 # Resolution, sample count and the flow-domain ghost's visibility are overridden through a small
@@ -16,8 +16,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_SCENE = ROOT / "scenes" / "present.usda"
+from project_paths import ROOT, MODEL
+
+DEFAULT_SCENE = MODEL / "scenes" / "present.usda"
 OUT_DIR = ROOT / "build" / "stills"
 ALL_PRODUCTS = ("Hero", "Detail", "Main", "Wake")
 GHOST_DEFAULT = {"Main"}

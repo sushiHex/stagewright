@@ -1,5 +1,5 @@
-# Build the open-jet test section environment as assets/test_section.usda, with its procedural
-# textures in assets/textures/.
+# Build the open-jet test section environment as models/wind_tunnel/assets/test_section.usda, with its procedural
+# textures in models/wind_tunnel/assets/textures/.
 #   python tools/build_env.py            build (textures, then the stage), then the containment check
 #   python tools/build_env.py check      containment check only, on the existing file
 #
@@ -18,8 +18,9 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import meshlib as ml  # noqa: E402
 
-ROOT = Path(__file__).resolve().parent.parent
-OUT = ROOT / "assets" / "test_section.usda"
+from project_paths import ROOT, MODEL
+
+OUT = MODEL / "assets" / "test_section.usda"
 TEX_DIR = OUT.parent / "textures"
 
 # ---------------------------------------------------------------------------------------------
@@ -43,7 +44,7 @@ CFG = {
     "test_floor": {"x": (-700.0, 700.0), "y": (-1150.0, 1555.0), "top": 0.05, "bottom": -0.5},
     # Exit at Y 775, not the plan's nominal 700: two blueprint camera paths (Camera_ANIM3 and
     # FullOrbit_Camera) reach Y 727.3, and this keeps the lip (exit - wall / 2 = 762.5) 35 cm
-    # clear of them (docs/fit-check.md, section 5). Everything upstream moved with it.
+    # clear of them (models/wind_tunnel/docs/fit-check.md, section 5). Everything upstream moved with it.
     "nozzle": {
         "exit_y": 775.0, "inlet_y": 1575.0,
         "exit_hw": 325.0, "exit_h": 400.0, "exit_r": 40.0,     # exit 650 x 400 (26 m2)
@@ -88,7 +89,7 @@ CFG = {
         "face_y": -1212.0, "face_w": 90.0, "face_t": 10.0,  # bulkhead frame around the bell mouth
         "fill_y": -1260.0, "fill_intensity": 900.0,  # dim light inside the throat, facing downstream
     },
-    # Centred on the hero car's mid-wheelbase, Y 92.9 (docs/fit-check.md, section 4).
+    # Centred on the hero car's mid-wheelbase, Y 92.9 (models/wind_tunnel/docs/fit-check.md, section 4).
     "turntable": {"cx": 0.0, "cy": 93.0, "r": 500.0, "ring_w": 12.0, "top": 0.10, "ring_top": 0.15, "bottom": -10.0,
                   "seam_w": 2.5},
     # half_len 380 keeps the belt, its drums and end plates on the turntable (Y -321..507), well
@@ -97,7 +98,7 @@ CFG = {
              "gap": 1.5, "end_plate": 30.0, "drum_r": 3.0, "drum_gap": 4.0},
     # Wheel-drive belt units of a five-belt rolling road: one short flush belt under each tyre,
     # beside the centre belt, all on the turntable. Unit centres are the blueprint hero car's tyre
-    # contact centres, derived from the wheel bounding boxes in docs/fit-check.md section 4: X is
+    # contact centres, derived from the wheel bounding boxes in models/wind_tunnel/docs/fit-check.md section 4: X is
     # the centre of each wheel's box (front +/-91.7, rear +/-94.5), Y is its axle (front 240.6,
     # rear -54.7). The tyres are 29 (front) to 34 (rear) cm wide, so a 35 x 60 belt covers each
     # contact patch. A real unit slides to suit each car's track and wheelbase; these are fixed at

@@ -9,7 +9,7 @@
     contributes. Nothing else in the blueprint stage is touched. tools/fit_check.py verifies it."""
     metersPerUnit = 0.01
     subLayers = [
-        @../external/blueprint/source/specializations/auto-aero/stages/Main.usda@
+        @../../../external/blueprint/source/specializations/auto-aero/stages/Main.usda@
     ]
     timeCodesPerSecond = 60
     upAxis = "Z"

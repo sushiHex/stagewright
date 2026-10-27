@@ -1,6 +1,6 @@
 # Build plan
 
-Status as of 2026-10-27 (handoff notes in `docs/handoff.md`; task 10 is complete; task 11 is next):
+Status as of 2026-10-27 (handoff notes in `docs/handoff.md`; tasks 10 and 11 are complete; presentation refinement is next):
 
 - **Done:**
   - The ovrtx smoke render works on the RTX 3090 (lit, shadowed, PathTracing).
@@ -56,7 +56,7 @@ parametric Python through usdex, which an agent can regenerate deterministically
 - **The flow domain must sit fully inside the jet** (X -144..144, Y -650..430, Z -4..248).
 - **Nozzle:**
   - exit about 650 wide by 400 tall (about 26 m2)
-  - exit plane at Y +775 (moved from the nominal +700 so two blueprint camera paths stay 35 cm clear of the lip; see docs/fit-check.md)
+  - exit plane at Y +775 (moved from the nominal +700 so two blueprint camera paths stay 35 cm clear of the lip; see models/wind_tunnel/docs/fit-check.md)
   - contraction body extending upstream to Y +1575, supported by side A-frames and one portal at the settling chamber
   - honeycomb or screen visible through the exit, as one mesh or a normal-mapped plane
 - **Collector:** a bell-mouth intake about 800 by 500 at Y -1100, with the diffuser receding beyond it.
@@ -77,7 +77,7 @@ parametric Python through usdex, which an agent can regenerate deterministically
 - **Ahmed body** (presentation root only):
   - 104.4 long, 38.9 wide, 28.8 high, with a 25 degree slant and nose radius 10
   - 5 clearance on four posts
-  - dimensions checked against restatements of the primary source; see docs/assets.md for what is and is not settled
+  - dimensions checked against restatements of the primary source; see models/wind_tunnel/docs/assets.md for what is and is not settled
 - **QC set:** grey, chrome and paint spheres at the car position.
 - **Naming:** the payload root is `/Environment` with an identity xform. Lights live under it, and so
   does everything else.
@@ -86,16 +86,16 @@ parametric Python through usdex, which an agent can regenerate deterministically
 
 1. **Camera animation fix.** Done 2026-10-26: it was never a renderer bug, see CLAUDE.md "Camera
    motion".
-2. **`tools/build_env.py` to `assets/test_section.usda`.**
+2. **`tools/build_env.py` to `models/wind_tunnel/assets/test_section.usda`.**
    - Build the parametric graybox through usdex, with every dimension in one config block at the top.
    - Done when it validates cleanly with `nvidia_usd_validate` and the domain is inside the jet with
      clearance.
-3. **`tools/build_present.py` to `scenes/present.usda`.**
+3. **`tools/build_present.py` to `models/wind_tunnel/scenes/present.usda`.**
    - It references the environment and adds the Ahmed body, the QC spheres, the hero and detail
      cameras, and the RenderProducts.
    - Done when it renders non-black from every camera.
 4. **Override and fit check.**
-   - `scenes/blueprint_override.usda`: sublayer the blueprint `Main.usda` and apply the explicit
+   - `models/wind_tunnel/scenes/blueprint_override.usda`: sublayer the blueprint `Main.usda` and apply the explicit
      payload list-op (see CLAUDE.md).
    - `tools/fit_check.py`:
      - Use `XformCache` and `BBoxCache` to check that the environment fully contains the domain, and
@@ -104,12 +104,12 @@ parametric Python through usdex, which an agent can regenerate deterministically
        blueprint source).
      - Optionally pull only the CarHero LFS object, to check the car's bounds against the floor and
        turntable.
-   - Output a markdown report in `docs/fit-check.md`.
+   - Output a markdown report in `models/wind_tunnel/docs/fit-check.md`.
 5. **`tools/render.py`.**
    - Stills at 64 spp for review and 256 to 512 spp for finals.
    - Also render from the blueprint's CameraMAIN_00 with the domain shown as a BasisCurves ghost.
 6. **Look development:** materials, seams, light panels, exposure. Every CC0 texture gets an entry in
-   `docs/assets.md`.
+   `models/wind_tunnel/docs/assets.md`.
 7. **Motion:** DONE 2026-10-26; task 10 replaces its image writes and MP4 path.
    - 216-frame Dolly, `build/out/dolly.mp4`; optional palette GIF only with `--gif`.
 8. **README:** DONE 2026-10-26 (licence still TBD).
@@ -160,14 +160,23 @@ parametric Python through usdex, which an agent can regenerate deterministically
       through the new path, and ffmpeg is no longer required unless `--gif` is passed.
       These gates pass. Optional task 10e is deferred and does not block task 11; no dataset terms
       have been accepted or downloads authorized.
-11. **Multi-model layout.** The repo was renamed `stagewright` on 2026-10-27 because more procedural
-    models will follow the wind tunnel. Its files still sit at the root. Move them under a per-model
-    directory (for example `models/wind_tunnel/{assets,scenes,docs}`), with the shared helpers
-    (`rtx.py`, `meshlib.py`, the render scripts) staying in `tools/`. Watch the relative paths that
-    break on a move: the override's sublayer and payload paths in `scenes/blueprint_override.usda`,
-    texture paths inside the asset, `ROOT`-relative paths in every script, and the README clone
-    layout. Gate: validate, `fit_check.py --strict` 0 FAIL, and one still identical to the current
-    final. Do it after task 10, not during it.
+11. **Multi-model layout: DONE 2026-10-27.** The wind tunnel now lives under
+    `models/wind_tunnel/{assets,scenes,docs,media}`. Project planning stays in root `docs/`, and
+    builders/shared helpers stay in `tools/`. `tools/project_paths.py` defines the default model
+    location without a model registry or plugin framework. Build outputs and the external blueprint
+    clone stay at the repository root. The moved override uses the corrected blueprint sublayer;
+    its explicit environment payload and relative texture arcs are unchanged.
+    - Rebuilt asset and texture bytes and both presentation layers match the baseline exactly.
+    - Local dependencies resolve, validation has only the documented exceptions, and strict fit
+      reports 29 checks, 0 FAIL, 0 NOT CHECKED. The reference hero remains visually equivalent;
+      repeated path tracing introduces small pixel variation, so pixel identity is not claimed.
+    - Motion rendering accepts scene, product, fps and count explicitly. Custom scenes require
+      separate output directories; only the canonical default sequence writes the public-source
+      dolly MP4. This prevents private/custom scene renders entering the fixed media copy path.
+12. **Focused presentation refinement.** Improve the dolly so it passes the body, with clearance
+    and framing checks. Trial softer honeycomb wall transitions and rougher metal walls, comparing
+    adjacent frames at matching poses before deciding whether to retain the change. Keep the
+    existing body, collector and stage contract. No additional assets or tooling.
 
 **Gate:** if task 6 has no presentable still five hours into the build, ship stills only.
 

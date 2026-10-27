@@ -21,8 +21,8 @@ then `docs/plan.md`, then this file.
   metadata, uniform timestamps and sampled decoded frames were checked. The public JPEGs and MP4
   were refreshed through `tools/build_media.py` from fixed presentation outputs.
 - Task 10 is complete against its delivery gates. Optional task 10e is deferred; dataset terms and
-  renderer compatibility remain unverified. No dataset was downloaded. Task 11 is next.
-- A baseline is captured in repository history before task 11. Commit only when the owner asks;
+  renderer compatibility remain unverified. No dataset was downloaded. Task 11 is complete.
+- The initial baseline is commit `227b9e0`; task 11 is isolated from subsequent visual changes. Commit only when the owner asks;
   messages stay neutral (no product names from the hard rules, no AI or process talk, no trailers).
 
 ## Rebuild from scratch
@@ -30,7 +30,7 @@ then `docs/plan.md`, then this file.
 ```
 .venv/Scripts/python.exe tools/build_env.py
 .venv/Scripts/python.exe tools/build_present.py
-.venv/Scripts/nvidia_usd_validate.exe assets/test_section.usda
+.venv/Scripts/nvidia_usd_validate.exe models/wind_tunnel/assets/test_section.usda
 .venv/Scripts/python.exe tools/fit_check.py --strict
 .venv/Scripts/python.exe tools/render.py --res 1920x1080 --spp 256 --prefix final_
 .venv/Scripts/python.exe tools/render.py --products Main --qc --res 1920x1080 --spp 256 --prefix final_qc_
@@ -49,16 +49,23 @@ pinned commit `62610544f41a338a8abbbe32e2e902d4107c506d`, LFS skipped, CarHero f
 | `build/stills/final_{hero,detail,main,wake,qc_main}.png` | finals, 1920x1080, 256 spp |
 | `build/stills/*.png` (no prefix) | older 960x540 review passes |
 | `build/out/dolly.mp4` | 216-frame dolly, 1280x720, 64 spp; GIF is optional with `--gif` |
-| `media/*.jpg`, `media/dolly.mp4` | fixed presentation copies for README; the older GIF is no longer embedded |
-| `build/private/*.png` | renders containing the blueprint's own car. **Never publish, never commit, never copy into `media/`** |
+| `models/wind_tunnel/media/*.jpg`, `models/wind_tunnel/media/dolly.mp4` | fixed presentation copies for README; the older GIF is no longer embedded |
+| `build/private/*.png` | renders containing the blueprint's own car. **Never publish, never commit, never copy into public media** |
 
 ## Next steps, in order
 
-1. Task 11: isolate the wind-tunnel assets, scenes and model documentation, preserving the current
-   visuals and blueprint contract. Validate, run the strict fit check and compare a reference still.
-2. A focused presentation pass: make the dolly travel past the body and reduce honeycomb shimmer.
-3. Optional task 10e remains deferred. Revisit only after terms acceptance and explicit download
+1. A focused presentation pass: make the dolly travel past the body and reduce honeycomb shimmer.
+   Keep the existing body and collector. Verify clearance/framing and compare adjacent frames.
+2. Optional task 10e remains deferred. Revisit only after terms acceptance and explicit download
    approval, with one renderer compatibility trial before any migration.
+
+The wind tunnel lives under `models/wind_tunnel/{assets,scenes,docs,media}`. Root `docs/` holds
+project planning; shared tools remain in `tools/`. Build outputs, private renders and the external
+blueprint clone remain at the repository root. Layout verification passed: exact rebuilt asset,
+texture and presentation-layer parity, resolved local dependencies, documented validator exceptions
+only, strict fit 29 checks with none failed/unchecked, and a visually equivalent reference hero.
+Pixel identity is not claimed across stochastic path-tracing runs. The local private root's
+sublayer path was updated without rendering or copying its images.
 
 ## Implementation notes
 

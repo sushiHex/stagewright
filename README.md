@@ -11,9 +11,9 @@ to drop into the environment slot of NVIDIA's real-time wind tunnel blueprint,
 [digital-twins-for-fluid-simulation](https://github.com/NVIDIA-Omniverse-blueprints/digital-twins-for-fluid-simulation),
 through a single override layer.
 
-![Hero view: the nozzle and honeycomb behind the Ahmed reference body on the turntable](media/hero.jpg)
+![Hero view: the nozzle and honeycomb behind the Ahmed reference body on the turntable](models/wind_tunnel/media/hero.jpg)
 
-[Watch the dolly move from the wake side toward the nozzle (MP4)](media/dolly.mp4)
+[Watch the dolly move from the wake side toward the nozzle (MP4)](models/wind_tunnel/media/dolly.mp4)
 
 The environment is a plenum hall with acoustic wall panels and ceiling light panels. Upstream sits a
 contraction nozzle with a honeycomb visible through its exit; downstream, a bell-mouth collector.
@@ -28,15 +28,15 @@ blueprint application. See "What was verified" for exactly what was checked.
 
 | | |
 |---|---|
-| ![Blueprint camera view with the flow domain outlined](media/main.jpg) | ![Nozzle flange and supports](media/detail.jpg) |
+| ![Blueprint camera view with the flow domain outlined](models/wind_tunnel/media/main.jpg) | ![Nozzle flange and supports](models/wind_tunnel/media/detail.jpg) |
 | From a copy of the blueprint's `CameraMAIN_00` (same pose and lens), with the blueprint's CFD flow domain drawn as a wire box | Detail: nozzle flange, seams and A-frame supports |
-| ![Wake-side view toward the collector](media/wake.jpg) | ![Lighting QC spheres beside the model](media/qc_main.jpg) |
+| ![Wake-side view toward the collector](models/wind_tunnel/media/wake.jpg) | ![Lighting QC spheres beside the model](models/wind_tunnel/media/qc_main.jpg) |
 | Beside the model, looking downstream at the collector | Lighting QC: 18% grey, chrome and clear-coated paint spheres |
 
 ## What was verified
 
 `tools/fit_check.py` composes the blueprint's own stage with the override and measures it. The full
-report, with every source value cited by file and line, is [docs/fit-check.md](docs/fit-check.md).
+report, with every source value cited by file and line, is [models/wind_tunnel/docs/fit-check.md](models/wind_tunnel/docs/fit-check.md).
 In summary:
 
 - **Override composition.** The override sublayers the blueprint's `Main.usda` and replaces the
@@ -152,7 +152,7 @@ only that object. This needs [Git LFS](https://git-lfs.com) installed and set up
 git -C external/blueprint lfs pull --include="source/specializations/auto-aero/stages/layers/CarHero/**"
 ```
 
-The override is [scenes/blueprint_override.usda](scenes/blueprint_override.usda). Its whole content,
+The override is [models/wind_tunnel/scenes/blueprint_override.usda](models/wind_tunnel/scenes/blueprint_override.usda). Its whole content,
 apart from metadata, is:
 
 ```usda
@@ -161,7 +161,7 @@ apart from metadata, is:
     defaultPrim = "World"
     metersPerUnit = 0.01
     subLayers = [
-        @../external/blueprint/source/specializations/auto-aero/stages/Main.usda@
+        @../../../external/blueprint/source/specializations/auto-aero/stages/Main.usda@
     ]
     timeCodesPerSecond = 60
     upAxis = "Z"
@@ -178,15 +178,15 @@ over "World"
 ```
 
 The payload is an explicit list-op on purpose: `prepend` would add this environment in front of the
-blueprint's and keep the original one loading alongside it. The payload targets `/Environment`, the root of `assets/test_section.usda`, which has an identity
+blueprint's and keep the original one loading alongside it. The payload targets `/Environment`, the root of `models/wind_tunnel/assets/test_section.usda`, which has an identity
 transform and carries the environment's lights.
 
 Expected layout:
 
 ```
 stagewright/
-  assets/test_section.usda
-  scenes/blueprint_override.usda
+  models/wind_tunnel/assets/test_section.usda
+  models/wind_tunnel/scenes/blueprint_override.usda
   external/blueprint/            (clone, not tracked)
 ```
 
@@ -203,8 +203,8 @@ application names its stage in two places in the blueprint source:
   `auto-aero` directory.
 
 Using the environment in the application therefore means either pointing those at the override
-root (whose relative paths assume it stays at `scenes/` in this repository, next to
-`external/blueprint`), or copying the override's explicit payload opinion on `/World/WindTunnel`
+root (whose relative paths assume it stays at `models/wind_tunnel/scenes/` in this
+repository, with the blueprint clone at `external/blueprint`), or copying the override's explicit payload opinion on `/World/WindTunnel`
 into a root layer the application already opens. Neither was tried.
 
 ## Toolchain
@@ -224,6 +224,10 @@ MP4 encoding use the tools above. Python orchestrates the build; numpy carries a
 OpenUSD and the renderer, packs indexed USD data, and supports diagnostic checks. PyNvVideoCodec's
 muxer uses libav internally. Only the optional GIF fallback requires the ffmpeg executable.
 
+Each model keeps its assets, scenes, documentation and public media together under `models/`.
+The current builders and fit check target `wind_tunnel`; shared rendering and codec helpers stay in
+`tools/`. Ignored build outputs and the external blueprint clone remain at repository level.
+
 Geometry is parametric Python: every dimension sits in one config block at the top of
 `tools/build_env.py`, so the environment can be regenerated deterministically. Do not install
 `usd-core` into the same environment; `usd-exchange` ships its own OpenUSD and conflicts with it.
@@ -242,20 +246,25 @@ uv venv --python 3.13 .venv
 uv pip install --python .venv/Scripts/python.exe "ovrtx==0.6.0.1791947691" "ovstage==0.3.0.1791986420" "usd-exchange==3.0.1" "usd-validation-nvidia==1.22.0" "numpy==2.5.4"
 uv pip install --python .venv/Scripts/python.exe "pynvvideocodec==2.2.3" "nvidia-nvimgcodec-cu12[all]==0.9.0.20" "warp-lang==1.18.0"
 
-.venv/Scripts/python.exe tools/build_env.py            # assets/test_section.usda and assets/textures/
-.venv/Scripts/nvidia_usd_validate.exe assets/test_section.usda
-.venv/Scripts/python.exe tools/build_present.py        # scenes/present.usda, scenes/present_payload.usda
-.venv/Scripts/python.exe tools/fit_check.py --strict   # docs/fit-check.md (needs external/blueprint)
+.venv/Scripts/python.exe tools/build_env.py            # models/wind_tunnel/assets/test_section.usda and models/wind_tunnel/assets/textures/
+.venv/Scripts/nvidia_usd_validate.exe models/wind_tunnel/assets/test_section.usda
+.venv/Scripts/python.exe tools/build_present.py        # models/wind_tunnel/scenes/present.usda, models/wind_tunnel/scenes/present_payload.usda
+.venv/Scripts/python.exe tools/fit_check.py --strict   # models/wind_tunnel/docs/fit-check.md (needs external/blueprint)
 .venv/Scripts/python.exe tools/render.py --res 1920x1080 --spp 256 --prefix final_
 .venv/Scripts/python.exe tools/render.py --products Main --qc --res 1920x1080 --spp 256 --prefix final_qc_
 .venv/Scripts/python.exe tools/render_motion.py --res 1280x720 --spp 64 --encode
-.venv/Scripts/python.exe tools/build_media.py          # approved presentation outputs to media/
+.venv/Scripts/python.exe tools/build_media.py          # approved presentation outputs to models/wind_tunnel/media/
 ```
 
 Authoring (`pxr`) and rendering (`ovrtx`) always run in separate processes, because ovrtx carries
 its own USD runtime. Stills land in `build/stills/`, frames in `build/frames/dolly/`, and the MP4
 in `build/out/`. To encode an existing complete sequence, use `tools/render_motion.py --no-render --encode`. Add `--gif` only to request the optional GIF; that flag requires ffmpeg on the path.
-`tools/build_media.py` copies only fixed presentation output paths, never `build/private/`.
+`tools/build_media.py` copies only fixed presentation output paths into `models/wind_tunnel/media/`, never `build/private/`.
+
+For another scene, motion rendering accepts `--scene`, `--product`, `--count` and `--fps`.
+Supply a separate `--out` frame directory for custom scenes. Custom sequences write their video
+alongside those frames; only the default complete dolly writes `build/out/dolly.mp4`, the source
+used by `tools/build_media.py`.
 
 Run `.venv/Scripts/python.exe tools/check_compute.py` for numerical and codec regression checks.
 It checks the spectral noise against an independent Fourier reference, mesh geometry, lossless PNG,
@@ -268,29 +277,31 @@ could not run, such as the car checks when the CarHero LFS content has not been 
 ## Repository layout
 
 ```
-assets/test_section.usda     the environment payload (root prim /Environment)
-assets/textures/             procedural textures, generated by tools/build_env.py
-scenes/blueprint_override.usda   the drop-in override for the blueprint stage
-scenes/present.usda          presentation root: environment by reference, plus the Ahmed body,
+models/wind_tunnel/assets/test_section.usda     the environment payload (root prim /Environment)
+models/wind_tunnel/assets/textures/             procedural textures, generated by tools/build_env.py
+models/wind_tunnel/scenes/blueprint_override.usda   the drop-in override for the blueprint stage
+models/wind_tunnel/scenes/present.usda          presentation root: environment by reference, plus the Ahmed body,
                              QC spheres, cameras (including the animated Dolly) and RenderProducts
-scenes/present_payload.usda  the same, with the environment loaded as a payload
+models/wind_tunnel/scenes/present_payload.usda  the same, with the environment loaded as a payload
 tools/build_env.py           builds the environment and its textures
 tools/build_present.py       builds the presentation roots and checks the dolly path clearance
+tools/project_paths.py       repository and default-model locations
 tools/meshlib.py             mesh assembly (lofts, sweeps, rounded sections)
 tools/mesh_compute.py        Warp mesh kernels
 tools/texture_compute.py     Warp spectral noise and material-map kernels
 tools/image_io.py            nvImageCodec PNG/JPEG IO
 tools/video_io.py            PyNvVideoCodec NVENC encode and MP4 mux
 tools/video_pixels.py        Warp RGB-to-NV12 conversion
-tools/build_media.py         fixed presentation output paths to media/
+tools/build_media.py         fixed presentation output paths to models/wind_tunnel/media/
 tools/check_compute.py       numerical and codec regression checks
-tools/fit_check.py           the fit check, writes docs/fit-check.md
+tools/fit_check.py           the fit check, writes models/wind_tunnel/docs/fit-check.md
 tools/render.py              stills
 tools/render_motion.py       the dolly sequence, MP4 and optional GIF
 tools/smoke.py               renderer smoke test
 tools/rtx.py                 shared ovrtx session, stepping and readback helpers for the three above
-docs/                        plan, fit-check report, asset and reference notes
-media/                       images used by this README
+docs/                        project plan and handoff
+models/wind_tunnel/docs/      model fit-check report, assets and references
+models/wind_tunnel/media/     presentation images and video used by this README
 ```
 
 ## The Ahmed body
@@ -304,7 +315,7 @@ not from a downloaded model. The stilt positions are chosen for the presentation
 (whether the 222 mm slant length runs along the slant or along the axis) is not settled by those
 sources. It is shown at 4.3 times model scale (about 4.49 x 1.67 x 1.24 m) so it reads at car size,
 which makes it a prop rather than a benchmark-equivalent model. See
-[docs/assets.md](docs/assets.md) for the details. It is a presentation prop only and is not part of
+[models/wind_tunnel/docs/assets.md](models/wind_tunnel/docs/assets.md) for the details. It is a presentation prop only and is not part of
 the environment payload.
 
 ## Licences

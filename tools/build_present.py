@@ -1,5 +1,5 @@
-# Build the presentation root: scenes/present.usda (environment by reference) and
-# scenes/present_payload.usda (identical, environment by payload, to prove ovrtx loads payloads).
+# Build the presentation root: models/wind_tunnel/scenes/present.usda (environment by reference) and
+# models/wind_tunnel/scenes/present_payload.usda (identical, environment by payload, to prove ovrtx loads payloads).
 #   python tools/build_present.py
 #
 # Adds what must never live in the environment payload: the Ahmed reference body, the lighting
@@ -15,15 +15,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import meshlib as ml  # noqa: E402
 from build_env import CFG as ENV  # noqa: E402
 
-ROOT = Path(__file__).resolve().parent.parent
-SCENES = {"reference": ROOT / "scenes" / "present.usda", "payload": ROOT / "scenes" / "present_payload.usda"}
+from project_paths import ROOT, MODEL
+
+SCENES = {"reference": MODEL / "scenes" / "present.usda", "payload": MODEL / "scenes" / "present_payload.usda"}
 ENV_ASSET = "../assets/test_section.usda"
 
 # ---------------------------------------------------------------------------------------------
 # Config (cm unless noted)
 # ---------------------------------------------------------------------------------------------
 # The props sit on the turntable centre, which build_env.py puts on the blueprint car's
-# mid-wheelbase (Y 92.9, docs/fit-check.md), so the hero shots and the blueprint car share a centre.
+# mid-wheelbase (Y 92.9, models/wind_tunnel/docs/fit-check.md), so the hero shots and the blueprint car share a centre.
 CAR_X, CAR_Y = 0.0, ENV["turntable"]["cy"]
 
 # Ahmed body, millimetres. Source: S. R. Ahmed, G. Ramm and G. Faltin, "Some Salient Features of
