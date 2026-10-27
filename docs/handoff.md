@@ -20,6 +20,31 @@ then `docs/plan.md`, then this file.
 - Tasks 10a to 10d are DONE, including regenerated final stills, QC and the full dolly. MP4 container
   metadata, uniform timestamps and sampled decoded frames were checked. The public JPEGs and MP4
   were refreshed through `tools/build_media.py` from fixed presentation outputs.
+- The owner accepted the Dolly and the revised Orbit360. Both movie hashes and all existing still
+  hashes are preserved in the local acceptance record. Keep accepted media unchanged during any
+  further optimization trials.
+- Orbit360 is revised into a wider dolly/crane tour, changing distance, height and aim to show
+  the hall, nozzle, turntable and collector. Authored closure, continuous seam velocity/acceleration,
+  body/environment framing and camera clearance checks pass for both roots. The full-quality render,
+  repeat-pose, source/decoded seam and timestamp checks passed; public loop media is refreshed.
+  Local review/source archives are refreshed with the wider shot and current tools.
+  MIT remains applied. The owner authorized committing and publishing this approved state to
+  the public repository `https://github.com/sushiHex/stagewright`. Further changes still require
+  explicit commit authorization.
+- Further private profiling identified renderer convergence as the optimization priority. Shared
+  still/motion sample batching preserves the explicit sample budget, with a reference option and
+  authored-setting preservation. Image acceptance, CPU budget/control tests, production motion
+  repeat-pose and source-seam checks pass. The still CLI smoke converged and produced a complete
+  PNG. Normal scene updates already propagate sampled properties; a camera-only update path was
+  not added. Both render CLIs support `--sample-batch 1` for the reference launch schedule.
+- Additional GPU/concurrency trials are unvalidated: larger sample batches and PathTracing-only
+  initialization encountered resource-upload failures under current GPU resource pressure. Keep
+  the verified defaults. PNG writing is a minor measured stage, so no Python writer thread was
+  added. Re-run candidates with adequate GPU headroom before accepting further changes.
+- Next-run motion rendering skips warmup readbacks, filters mapped CUDA pixels before the host copy,
+  and reuses sequence-owned codecs and filter buffers. Same-frame CPU-reference parity, cleanup and
+  ownership tests, optimized motion smoke and numerical/codec/routing regressions pass. Sampling,
+  filtering and encoder quality are unchanged; `--cpu-readback` retains the reference path.
 - The focused presentation pass is complete: the dolly passes the body, the collector bulkhead
   has fasteners, and motion supports Warp triangle-filtered supersampling with a native fallback.
   Final stills, QC, full dolly and public media are refreshed. MP4 metadata and sampled decoded
@@ -41,7 +66,10 @@ then `docs/plan.md`, then this file.
 .venv/Scripts/python.exe tools/render.py --res 1920x1080 --spp 256 --prefix final_
 .venv/Scripts/python.exe tools/render.py --products Main --qc --res 1920x1080 --spp 256 --prefix final_qc_
 .venv/Scripts/python.exe tools/render_motion.py --res 1280x720 --spp 64 --supersample 2 --encode
+.venv/Scripts/python.exe tools/render_motion.py --product Orbit360 --res 1280x720 --spp 64 --supersample 2 --encode
+.venv/Scripts/python.exe tools/check_loop.py
 .venv/Scripts/python.exe tools/build_media.py
+.venv/Scripts/python.exe tools/build_share.py
 .venv/Scripts/python.exe tools/check_compute.py
 ```
 
@@ -54,15 +82,20 @@ pinned commit `62610544f41a338a8abbbe32e2e902d4107c506d`, LFS skipped, CarHero f
 |---|---|
 | `build/stills/final_{hero,detail,main,wake,qc_main}.png` | finals, 1920x1080, 256 spp |
 | `build/stills/*.png` (no prefix) | older 960x540 review passes |
+| `build/out/orbit360.mp4` | loopable full dolly/crane tour, with repeat-pose guards kept outside the video |
 | `build/out/dolly.mp4` | 216-frame dolly, 1280x720, 64 spp; GIF is optional with `--gif` |
-| `models/wind_tunnel/media/*.jpg`, `models/wind_tunnel/media/dolly.mp4` | fixed presentation copies for README; GIF generation is optional and not copied by default |
+| `models/wind_tunnel/media/*.jpg`, `models/wind_tunnel/media/*.mp4` | fixed presentation copies for README; GIF generation is optional and not copied by default |
+| `build/share/stagewright-{review,source}.zip` | local verified review/source archives, with offline player and checksums |
 | `build/private/*.png` | renders containing the blueprint's own car. **Never publish, never commit, never copy into public media** |
 
 ## Next steps, in order
 
-1. Choose the repository licence and decide whether to publish. Nothing has been published.
-2. Review fine-pattern motion at the intended playback size. Native sampling remains available
-   with `--supersample 1` if preferred; do not claim the sampling aid eliminates shimmer.
+1. The approved public release is `https://github.com/sushiHex/stagewright`, with `main` as the
+   release branch. Preserve both accepted movies and existing still hashes. Further optimization
+   stays separate from this release; verified render settings remain active. Commit further changes
+   only when requested.
+2. Keep fine-pattern shimmer documented as a known limitation. Revisit presentation changes only
+   when requested; acceptance does not establish universal shimmer removal.
 3. Optional task 10e remains deferred. Revisit only after terms acceptance and explicit download
    approval, with one renderer compatibility trial before any migration.
 
@@ -78,8 +111,10 @@ sublayer path was updated without rendering or copying its images.
 
 - `tools/check_compute.py` checks the Warp spectral implementation against a Fourier reference,
   analytic mesh cases, lossless PNG, JPEG and MP4 color/frame ordering. Fixtures stay in `build/`.
-- Only the canonical default motion sequence can write `build/out/dolly.mp4`; custom and preview
-  videos stay with their explicit frame directories, away from the fixed public media source.
+- Only complete canonical motion sequences can write their built-in `build/out/` videos; custom
+  and preview videos stay with their explicit frame directories, away from fixed public media sources.
+- `tools/build_share.py` uses explicit first-party paths and rejects protected roots and stale loop
+  verification. Archives exclude private renders, the external blueprint, dependencies and build logs.
 - PyNvVideoCodec's packed RGB path produced full-range YUV without range metadata in this pinned
   build. `tools/video_pixels.py` computes limited-range BT.601 NV12 explicitly in Warp.
 - `tools/video_io.py` drains encoder packets, uses a 90 kHz clock and disables B-frames for direct
@@ -101,6 +136,6 @@ sublayer path was updated without rendering or copying its images.
 1. SimReady materials: accept the gated dataset terms (task 10e).
 2. DrivAerML body (CC-BY-SA) to replace or join the Ahmed body: a download, needs approval.
 3. Phone capture of a large interior for the gsplat backdrop (task 9).
-4. Licence: MIT or Apache-2.0 (README and plan say TBD).
-5. Final repo name and whether it goes public.
+4. Licence is resolved: MIT for original code and generated content; dependencies keep their terms.
+5. Repository name and public release are resolved: `sushiHex/stagewright`.
 6. Blender MCP: not installed; current direction is code-only.

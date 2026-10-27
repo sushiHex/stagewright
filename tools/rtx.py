@@ -27,7 +27,7 @@ def publish(scene, ordinal):
 
 
 def seek(scene, ordinal, seconds):
-    """Repopulate the scene from its USD time samples at `seconds`, as ordinal `ordinal`."""
+    """Advance USD time and propagate sampled properties at `seconds`, as ordinal `ordinal`."""
     import ovstage
 
     ovstage.population.update_from_usd_time(scene, ordinal=ordinal, time=seconds)
@@ -74,13 +74,17 @@ def pixels(frame, render_var):
     return host
 
 
-def converge(rtx, products, ordinal, delta_time, max_steps, var="Color"):
+def converge(rtx, products, ordinal, delta_time, max_steps, var="Color", *,
+             capture=True, read_pixels=None):
     """Step `products` at `ordinal` until each one reports converged, or until the last step, and
     read back the `var` render var of each.
 
-    Returns (images, status): images maps product -> RGBA array for every product that produced a
+    Returns (images, status): images maps product -> image array for every product that produced a
     frame; status maps product -> (progression, converged) of the last frame seen. A product
-    missing from `images` produced no frame at all."""
+    missing from `images` produced no frame at all. With capture=False, values are
+    None instead of images, preserving frame-availability checks without mapping pixels.
+    read_pixels optionally replaces the default host-copy reader."""
+    reader = pixels if read_pixels is None else read_pixels
     waiting = set(products)
     images, status = {}, {}
     for k in range(max_steps):
@@ -92,7 +96,7 @@ def converge(rtx, products, ordinal, delta_time, max_steps, var="Color"):
                 continue
             status[product] = (fr.progression, fr.converged)
             if fr.converged or final:
-                images[product] = pixels(fr, f"{product}/{var}")
+                images[product] = reader(fr, f"{product}/{var}") if capture else None
                 waiting.discard(product)
         del result
         if not waiting:

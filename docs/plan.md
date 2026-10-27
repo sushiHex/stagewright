@@ -1,6 +1,6 @@
 # Build plan
 
-Status as of 2026-10-27 (handoff notes in `docs/handoff.md`; tasks 10 and 11 are complete; presentation refinement is complete with documented visual limits):
+Status as of 2026-10-27 (handoff notes in `docs/handoff.md`; tasks 10 and 11 are complete; task 13 adds a loop shot and prepares sharing):
 
 - **Done:**
   - The ovrtx smoke render works on the RTX 3090 (lit, shadowed, PathTracing).
@@ -112,7 +112,7 @@ parametric Python through usdex, which an agent can regenerate deterministically
    `models/wind_tunnel/docs/assets.md`.
 7. **Motion:** DONE 2026-10-26; task 10 replaces its image writes and MP4 path.
    - 216-frame Dolly, `build/out/dolly.mp4`; optional palette GIF only with `--gif`.
-8. **README:** DONE 2026-10-26 (licence still TBD).
+8. **README:** DONE 2026-10-26 (licence selected: MIT).
    - what it is (a conceptual presentation environment) and what was verified
    - how to use the override
    - the toolchain
@@ -190,6 +190,66 @@ parametric Python through usdex, which an agent can regenerate deterministically
       dimensions and frame count pass; sampled decoded views match source PNGs and show the new
       pass beyond the nose. Public JPEG/MP4 copies were refreshed from fixed presentation paths.
       Source and output routing received independent review. No additional assets were downloaded.
+
+13. **Loop shot, MIT and sharing: DONE 2026-10-27.** Preserved the accepted Dolly and all existing
+    stills. Added an initial `Orbit360` circular camera path, one full turn,
+    exact authored closure and no duplicate endpoint in the encoded video. Framing, actual authored
+    poses, uniform cyclic stepping and conservative camera-position clearance checks passed.
+    Post-cycle guard poses and the source/decoded seam and container timestamps were verified.
+    Applied MIT to original code and generated content, leaving dependency terms intact. Prepared
+    explicit-whitelist local review/source archives with an offline looping player and checksums;
+    no private outputs, dependencies, downloads, uploads or publication. Leave changes uncommitted
+    until requested. Full source/decoded seam, repeated-pose and uniform timestamp checks passed.
+    Accepted Dolly/still media hashes are unchanged. Local archives contain checksums and passed
+    integrity, privacy and offline-link checks; nothing was uploaded.
+
+14. **Render pipeline reuse: DONE 2026-10-27.** The completed orbit was isolated from next-run
+    changes. Sampling, the exact integer triangle filter, encoder settings, motion cadence and output
+    routing are preserved. Discarded warmup poses skip readback; sequence-owned codecs and scratch
+    buffers are reused; mapped CUDA pixels are filtered before the RGB host copy. `--cpu-readback`
+    keeps the explicit CPU reference path. Same-frame captures matched exactly across orbit views.
+    Ownership, resizing, cleanup and warmup scheduling checks passed, including launch, conversion,
+    readback and interruption failures. The optimized motion smoke test and numerical, codec and
+    routing regressions passed. No public performance figures or quality reductions.
+
+15. **Loop framing revision: DONE 2026-10-27.** Replace the tight circular shot with a wider
+    dolly/crane tour, using the accepted Dolly as the composition and movement reference. The closed
+    cubic B-spline changes distance, height and aim through a low wake-side approach, a rising nozzle
+    sweep, a collector establishing view and an opposite-side return. Preserve one complete turn,
+    moving loop closure and the accepted Dolly/still media. Check body framing, environment context,
+    nozzle/collector establishing views, camera clearance and continuous seam velocity/acceleration.
+    Preview views and both authored-root checks passed. Independent review confirmed all existing
+    opinions outside the revised camera are unchanged. The full-quality render and source/decoded
+    seam, repeated-pose and timestamp checks passed. Public loop media is refreshed; accepted Dolly
+    and still hashes are unchanged. Local archives are refreshed with the wider shot and tools.
+    No downloads, commits or publication. The owner accepted the revised Orbit360. Its verified
+    movie hash joins the existing accepted-media record; further optimization must preserve it.
+
+16. **Offline path-tracing batches: DONE 2026-10-27.** Private component profiling identified renderer
+    convergence as the next optimization priority. Ordinary scene updates already propagate only
+    time-sampled properties; no camera-only update path was added. Use the documented RTX
+    `samplesPerIteration` setting while retaining the total `samplesPerPixel` budget. Shared still
+    and motion controls select a batch divisor of the explicit budget and preserve authored settings
+    for stills `--spp 0`. `--sample-batch 1` retains the reference launch schedule. Private batching
+    trials passed converged accumulation and source-image acceptance. Budget/control tests and
+    independent API/source review passed. Production motion repeat-pose stability and source seam
+    checks passed. The still CLI smoke also converged and produced a complete PNG. Local archives
+    are refreshed with the verified wider loop and current tools. No timings, benchmark figures,
+    downloads, commits or publication.
+
+17. **Further GPU and concurrency trials: awaiting clean validation.** PNG output is a minor stage
+    in the private component profile; a Python writer thread was not added. Larger sample batches
+    and PathTracing-only initialization are documented candidates, but resource-upload failures
+    prevented clean comparisons under current GPU resource pressure. Keep the verified batch and
+    default mode availability. Re-run the candidates with adequate GPU headroom before changing
+    defaults. No quality reductions, new dependencies, watchdog changes or published figures.
+
+18. **Public release: authorized 2026-10-27.** Publish the approved MIT-licensed presentation and
+    tools to `https://github.com/sushiHex/stagewright` on `main`. Audit the complete reachable history
+    and final tree, preserve accepted media hashes, and exclude build outputs, private renders,
+    profiling records, dependencies, external assets, secrets and restricted context. Commit messages
+    remain neutral with no trailers. Verify the remote commit, public visibility and repository
+    contents after push. Further optimization remains separate from this release.
 
 **Gate:** if task 6 has no presentable still five hours into the build, ship stills only.
 

@@ -3,17 +3,22 @@ from pathlib import Path
 
 import PyNvVideoCodec as nvc
 
-from image_io import read_rgb
+from image_io import ImageCodec
 from video_pixels import to_nv12
 
 
 def encode_mp4(paths, destination, fps):
+    with ImageCodec() as codec:
+        return _encode_mp4(paths, destination, fps, codec)
+
+
+def _encode_mp4(paths, destination, fps, codec):
     paths = list(paths)
     if not paths:
         raise ValueError("No frames to encode")
     if fps <= 0 or 90000 % fps:
         raise ValueError("Frame rate must divide the 90 kHz MP4 clock")
-    first = read_rgb(paths[0])
+    first = codec.read_rgb(paths[0])
     h, w = first.shape[:2]
     if w % 2 or h % 2:
         raise ValueError("H.264 4:2:0 needs even frame dimensions")
@@ -43,7 +48,7 @@ def encode_mp4(paths, destination, fps):
 
     try:
         for i, path in enumerate(paths):
-            rgb = first if i == 0 else read_rgb(path)
+            rgb = first if i == 0 else codec.read_rgb(path)
             if rgb.shape != (h, w, 3):
                 raise ValueError(f"Frame dimensions differ: {path}")
             mux(encoder.Encode(to_nv12(rgb)))

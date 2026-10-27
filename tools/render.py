@@ -11,6 +11,7 @@
 # Exit status is 1 if any requested product produced no frame.
 import argparse
 import os
+from math import gcd
 import sys
 from pathlib import Path
 
@@ -22,9 +23,19 @@ DEFAULT_SCENE = MODEL / "scenes" / "present.usda"
 OUT_DIR = ROOT / "build" / "stills"
 ALL_PRODUCTS = ("Hero", "Detail", "Main", "Wake")
 GHOST_DEFAULT = {"Main"}
+DEFAULT_SAMPLE_BATCH = 4
 
 
-def write_override(scene, products, res, spp, ghost, qc, out_dir=OUT_DIR):
+def iteration_samples(spp, sample_batch):
+    """Batch only a divisor of the explicit sample budget; retain authored settings at zero."""
+    if spp < 0 or sample_batch < 1:
+        raise ValueError("Sample budget must be nonnegative and sample batch must be positive")
+    return gcd(spp, sample_batch) if spp > 0 else None
+
+
+def write_override(scene, products, res, spp, ghost, qc, out_dir=OUT_DIR,
+                   sample_batch=DEFAULT_SAMPLE_BATCH):
+    batch = iteration_samples(spp, sample_batch)
     out_dir.mkdir(parents=True, exist_ok=True)
     rel = os.path.relpath(scene, out_dir).replace("\\", "/")
     vis = "inherited" if ghost else "invisible"
@@ -41,6 +52,8 @@ def write_override(scene, products, res, spp, ghost, qc, out_dir=OUT_DIR):
             lines.append(f"        uniform int2 resolution = ({res[0]}, {res[1]})")
         if spp:
             lines.append(f"        custom uint omni:rtx:pt:samplesPerPixel = {spp}")
+        if batch is not None:
+            lines.append(f"        custom int omni:rtx:pt:samplesPerIteration = {batch}")
         lines.append("    }")
     lines.append("}")
     path = out_dir / f"_override_{scene.stem}_{'ghost' if ghost else 'clean'}.usda"
@@ -48,14 +61,15 @@ def write_override(scene, products, res, spp, ghost, qc, out_dir=OUT_DIR):
     return path
 
 
-def render_batch(rtx, scene, products, res, spp, ghost, max_steps, tag, qc, out_dir):
+def render_batch(rtx, scene, products, res, spp, ghost, max_steps, tag, qc, out_dir,
+                 sample_batch=DEFAULT_SAMPLE_BATCH):
     """Render one group of products that share a ghost setting. Returns the products with no frame."""
     import numpy as np
     from image_io import write_rgb
 
     import rtx as rt
 
-    layer = write_override(scene, products, res, spp, ghost, qc, out_dir)
+    layer = write_override(scene, products, res, spp, ghost, qc, out_dir, sample_batch)
     names = {f"/Render/{p}": p for p in products}
     with rt.loaded_scene(rtx, "stills", layer):
         images, status = rt.converge(rtx, names, ordinal=1, delta_time=1 / 30, max_steps=max_steps)
@@ -76,7 +90,8 @@ def render_batch(rtx, scene, products, res, spp, ghost, max_steps, tag, qc, out_
     return [name for path, name in names.items() if path not in images]
 
 
-def render(scene, products, res, spp, max_steps, ghost_for, qc=False, prefix="", out_dir=OUT_DIR):
+def render(scene, products, res, spp, max_steps, ghost_for, qc=False, prefix="", out_dir=OUT_DIR,
+           sample_batch=DEFAULT_SAMPLE_BATCH):
     """Render every product; returns the products that produced no frame."""
     import rtx as rt
 
@@ -87,7 +102,7 @@ def render(scene, products, res, spp, max_steps, ghost_for, qc=False, prefix="",
     with rt.open_renderer() as rtx:
         for ghost, prods in batches:
             if prods:
-                missing += render_batch(rtx, scene, prods, res, spp, ghost, max_steps, tag, qc, out_dir)
+                missing += render_batch(rtx, scene, prods, res, spp, ghost, max_steps, tag, qc, out_dir, sample_batch)
     return missing
 
 
@@ -97,6 +112,8 @@ def main():
     ap.add_argument("--products", default=",".join(ALL_PRODUCTS))
     ap.add_argument("--res", default="960x540", help="WxH, or 'scene' to keep the authored resolution")
     ap.add_argument("--spp", type=int, default=64, help="0 keeps the authored sample count")
+    ap.add_argument("--sample-batch", type=int, default=DEFAULT_SAMPLE_BATCH,
+                    help="sample batch limit; uses a divisor of --spp, with 1 as reference; --spp 0 retains authored settings")
     ap.add_argument("--max-steps", type=int, default=0, help="step cap; default 4 x spp + 64")
     ap.add_argument("--ghost", default="auto", choices=("auto", "on", "off"),
                     help="flow-domain ghost: auto shows it for Main only")
@@ -104,11 +121,13 @@ def main():
     ap.add_argument("--prefix", default="", help="output file name prefix, e.g. final_")
     ap.add_argument("--out", type=Path, default=OUT_DIR, help="output directory (default build/stills)")
     a = ap.parse_args()
+    if a.spp < 0 or a.sample_batch < 1:
+        ap.error("--spp must be nonnegative and --sample-batch must be positive")
     res = None if a.res == "scene" else tuple(int(v) for v in a.res.lower().split("x"))
     products = [p.strip() for p in a.products.split(",") if p.strip()]
     ghost_for = {"auto": GHOST_DEFAULT, "on": set(products), "off": set()}[a.ghost]
     missing = render(a.scene.resolve(), products, res, a.spp, a.max_steps or 4 * max(a.spp, 64) + 64, ghost_for,
-                     a.qc, a.prefix, a.out.resolve())
+                     a.qc, a.prefix, a.out.resolve(), a.sample_batch)
     if missing:
         print(f"FAILED: no frame captured for {', '.join(missing)}")
         sys.exit(1)

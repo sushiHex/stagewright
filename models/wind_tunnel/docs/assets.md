@@ -5,7 +5,9 @@ and licence.
 
 ## Third-party assets
 
-None. No texture, HDRI or model has been downloaded.
+None are incorporated in the shipped environment or presentation scene. Their textures and model
+geometry are procedural. The separately cloned blueprint and its verification assets stay under
+ignored `external/` and are not redistributed; private verification renders stay under `build/private/`.
 
 ## Reference geometry
 

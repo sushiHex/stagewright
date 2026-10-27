@@ -9,7 +9,7 @@ import warp as wp
 import meshlib as mesh
 import texture_compute as tex
 from image_io import read_rgb, write_rgb
-from image_compute import downsample_rgb
+from image_compute import RGBDownsampler, downsample_rgb
 from video_io import encode_mp4
 
 OUT = Path(__file__).resolve().parent.parent / "build" / "checks"
@@ -77,6 +77,61 @@ def check_sampling():
         else:
             raise AssertionError("Invalid downsample request accepted")
 
+    workspace = RGBDownsampler(2)
+    first = workspace(rgba)
+    input_buffer, output_buffer = workspace._input, workspace._output
+    second = workspace(np.zeros_like(rgba))
+    assert workspace._input is input_buffer and workspace._output is output_buffer
+    np.testing.assert_array_equal(first, expected)
+    np.testing.assert_array_equal(second, np.zeros_like(expected))
+    assert first.flags.owndata and first.flags.c_contiguous
+    assert not np.shares_memory(first, second)
+    resized = np.arange(8 * 4 * 3, dtype=np.uint8).reshape(8, 4, 3)
+    np.testing.assert_array_equal(workspace(resized), downsample_rgb(resized, 2))
+    np.testing.assert_array_equal(workspace(pixels), expected)
+    np.testing.assert_array_equal(first, expected)
+    np.testing.assert_array_equal(RGBDownsampler(4)(rgba), [[[23, 24, 25]]])
+    np.testing.assert_array_equal(RGBDownsampler(1)(rgba), pixels)
+
+
+def check_capture_policy():
+    """CPU-only scheduler check: discarded warmups must not map pixels."""
+    from types import SimpleNamespace
+    from unittest.mock import Mock, patch
+    import rtx
+
+    def result(**products):
+        return {name: SimpleNamespace(frames=frames) for name, frames in products.items()}
+
+    class Renderer:
+        def __init__(self):
+            frame = lambda progress, done: SimpleNamespace(progression=progress, converged=done)
+            self.results = iter((result(A=[frame(1, False)], B=[]),
+                                 result(A=[frame(2, True)], B=[frame(1, False)]),
+                                 result(B=[frame(2, False)])))
+            self.calls = []
+
+        def step(self, **kwargs):
+            self.calls.append(kwargs)
+            return next(self.results)
+
+    discarded, captured = Renderer(), Renderer()
+    reader = Mock(side_effect=lambda frame, name: name)
+    with patch.object(rtx, "pixels", side_effect=AssertionError("Unexpected pixel map")):
+        markers, status = rtx.converge(discarded, ["A", "B"], 7, .25, 3,
+                                       capture=False, read_pixels=reader)
+        reader.assert_not_called()
+        images, captured_status = rtx.converge(captured, ["A", "B"], 7, .25, 3,
+                                               read_pixels=reader)
+        assert markers == {"A": None, "B": None}
+        assert images == {"A": "A/Color", "B": "B/Color"}
+        assert status == captured_status == {"A": (2, True), "B": (2, False)}
+        assert discarded.calls == captured.calls
+        assert [call["render_products"] for call in discarded.calls] == [{"A", "B"}, {"A", "B"}, {"B"}]
+        empty = Mock()
+        empty.step.return_value = {}
+        assert rtx.converge(empty, ["A"], 7, .25, 2, capture=False) == ({}, {})
+
 
 def check_codecs():
     OUT.mkdir(parents=True, exist_ok=True)
@@ -110,6 +165,32 @@ def check_codecs():
     assert output.is_file() and not output.with_suffix(".partial.mp4").exists()
 
 
+def check_sample_batches():
+    import render as rendering
+
+    for budget in range(1, 130):
+        for limit in (1, 2, 3, 4, 8):
+            batch = rendering.iteration_samples(budget, limit)
+            assert 1 <= batch <= min(budget, limit) and budget % batch == 0
+    assert rendering.iteration_samples(0, 4) is None
+    for budget, limit in ((-1, 4), (64, 0), (64, -1)):
+        try:
+            rendering.iteration_samples(budget, limit)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("Invalid sample budget/batch accepted")
+    options = dict(scene=rendering.DEFAULT_SCENE, products=["Hero", "Main"], res=(320, 180),
+                   ghost=False, qc=False, out_dir=OUT / "sample_settings")
+    text = rendering.write_override(**options, spp=6, sample_batch=4).read_text()
+    assert text.count("custom uint omni:rtx:pt:samplesPerPixel = 6") == 2
+    assert text.count("custom int omni:rtx:pt:samplesPerIteration = 2") == 2
+    text = rendering.write_override(**options, spp=64, sample_batch=1).read_text()
+    assert text.count("custom int omni:rtx:pt:samplesPerIteration = 1") == 2
+    text = rendering.write_override(**options, spp=0, sample_batch=4).read_text()
+    assert "samplesPerPixel" not in text and "samplesPerIteration" not in text
+
+
 def check_motion_routes():
     import contextlib
     import io
@@ -124,6 +205,22 @@ def check_motion_routes():
             assert error.code == 2
         else:
             raise AssertionError("Custom scene accepted the public frame directory")
+    orbit = motion.parse_args(["--product", "Orbit360", "--no-render", "--encode"])
+    assert (orbit.count, orbit.fps, orbit.loop) == (360, 24, True)
+    assert orbit.out == motion.frame_directory("Orbit360")
+    for product in ("Dolly", "Orbit360"):
+        with contextlib.redirect_stderr(io.StringIO()):
+            try:
+                motion.parse_args(["--scene", str(custom), "--product", product,
+                                   "--out", str(motion.frame_directory(product)), "--no-render", "--encode"])
+            except SystemExit as error:
+                assert error.code == 2
+            else:
+                raise AssertionError("Custom scene accepted a built-in public frame directory")
+    alternate = motion.parse_args(["--scene", str(custom), "--product", "Orbit360", "--count", "8",
+                                    "--fps", "30", "--loop", "--out", str(OUT / "custom_orbit"),
+                                    "--no-render", "--encode"])
+    assert (alternate.count, alternate.fps, alternate.loop) == (8, 30, True)
     frames = OUT / "custom_frames"
     frames.mkdir(parents=True, exist_ok=True)
     (frames / "0000.png").write_bytes((OUT / "color_0.png").read_bytes())
@@ -142,6 +239,8 @@ if __name__ == "__main__":
     check_spectrum()
     check_mesh()
     check_sampling()
+    check_capture_policy()
+    check_sample_batches()
     check_codecs()
     check_motion_routes()
     print("PASS: spectral reference, mesh geometry, filtered downsampling, PNG/JPEG, MP4 color/frame order and private output separation")

@@ -1074,7 +1074,9 @@ def write_report(car):
     rec.append("- Any code that frames or culls the car should compute bounds from points, or ignore the car's "
                "authored extents, which are stale on several meshes.")
     REPORT.parent.mkdir(parents=True, exist_ok=True)
-    REPORT.write_text("\n".join(head + [""] + md + nc + rec) + "\n", encoding="utf-8", newline="\n")
+    report = "\n".join(head + [""] + md + nc + rec) + "\n"
+    report = report.replace(ROOT.as_posix() + "/", "").replace(str(ROOT) + "\\", "")
+    REPORT.write_text(report, encoding="utf-8", newline="\n")
     print("wrote", REPORT)
 
 

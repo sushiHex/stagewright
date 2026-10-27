@@ -57,7 +57,7 @@ After loading `/World/WindTunnel`, its payload arcs are `[('test_section.usda', 
 
 ### Composition errors and missing assets (stage fully loaded)
 
-- Composition error, **git-lfs pointer (file present, content not fetched)**: `Could not open asset @C:/Users/kfaim/repos/stagewright/external/blueprint/source/specializations/auto-aero/data/low_res/detailed_car_510/aero_suv_low.ply@ for payload introduced by @C:/Users/kfaim/repos/stagewright/external/blueprint/source/specializations/auto-aero/stages/layers/CarCFD.usda@</World/CarCFD{Rims=Standard}{Mirrors=On}{Spoiler=On}{Ride_Height=High}> -- Cannot determine file format fo`
+- Composition error, **git-lfs pointer (file present, content not fetched)**: `Could not open asset @external/blueprint/source/specializations/auto-aero/data/low_res/detailed_car_510/aero_suv_low.ply@ for payload introduced by @external/blueprint/source/specializations/auto-aero/stages/layers/CarCFD.usda@</World/CarCFD{Rims=Standard}{Mirrors=On}{Spoiler=On}{Ride_Height=High}> -- Cannot determine file format fo`
 
 Asset-valued attributes that do not resolve to real content, by owner:
 

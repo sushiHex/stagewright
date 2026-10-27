@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import meshlib as ml  # noqa: E402
 from build_env import CFG as ENV  # noqa: E402
 
-from project_paths import ROOT, MODEL
+from project_paths import ROOT, MODEL, MOTION_SETTINGS
 
 SCENES = {"reference": MODEL / "scenes" / "present.usda", "payload": MODEL / "scenes" / "present_payload.usda"}
 ENV_ASSET = "../assets/test_section.usda"
@@ -93,12 +93,32 @@ RENDER = {"resolution": (1920, 1080), "spp": 256}
 # up, so there is no roll. Samples are authored once per output frame, at time code
 # frame * tcps / fps (the stage runs at 60 time codes per second; the move is cut at 24 fps).
 DOLLY = {
-    "fps": 24, "frames": 216,  # 9 s
+    **MOTION_SETTINGS["Dolly"],
     "eye": ((-60.0, -1000.0, 45.0), (-680.0, -950.0, 110.0), (-680.0, 180.0, 180.0), (-500.0, 550.0, 220.0)),
     "target": ((0.0, 40.0, 80.0), (0.0, 93.0, 100.0), (0.0, 93.0, 110.0), (0.0, 93.0, 105.0)),
     "focal": 20.0, "h_ap": 36.0,
     "exposure": {"fStop": 5.0, "time": 0.02, "iso": 100.0, "responsivity": 1.0},
     "min_clearance": 30.0,  # cm, from every gprim's world box (environment and props)
+}
+
+
+# A periodic dolly/crane tour. A closed cubic B-spline gives continuous position,
+# velocity and acceleration through every join, including the loop boundary. The
+# wide lens and changing distance, height and aim reveal the hall.
+ORBIT = {
+    **MOTION_SETTINGS["Orbit360"],
+    "center": (CAR_X, CAR_Y),
+    "eye": ((-120.0, -1000.0, 65.0), (-780.0, -870.0, 150.0),
+            (-850.0, -150.0, 300.0), (-650.0, 650.0, 330.0),
+            (100.0, 680.0, 200.0), (800.0, 480.0, 250.0),
+            (900.0, -250.0, 190.0), (650.0, -1000.0, 95.0)),
+    "target": ((CAR_X, 250.0, 145.0), (CAR_X, 210.0, 160.0),
+               (CAR_X, 150.0, 160.0), (CAR_X, 40.0, 120.0),
+               (CAR_X, -120.0, 100.0), (CAR_X, -150.0, 100.0),
+               (CAR_X, 100.0, 135.0), (CAR_X, 300.0, 140.0)),
+    "focal": 18.0, "h_ap": DOLLY["h_ap"],
+    "max_body_frame": (0.65, 0.65),
+    "exposure": dict(DOLLY["exposure"]), "min_clearance": 30.0,
 }
 
 
@@ -113,6 +133,23 @@ def dolly_pose(frame):
     t = frame / (DOLLY["frames"] - 1)
     s = 0.5 - 0.5 * math.cos(math.pi * t)
     return bezier(DOLLY["eye"], s), bezier(DOLLY["target"], s)
+
+
+def closed_spline(ctrl, phase):
+    """Uniform periodic cubic B-spline, with phase measured in full turns."""
+    at = (phase % 1.0) * len(ctrl)
+    index = math.floor(at)
+    t = at - index
+    weights = ((1 - t) ** 3, 3 * t ** 3 - 6 * t ** 2 + 4,
+               -3 * t ** 3 + 3 * t ** 2 + 3 * t + 1, t ** 3)
+    return sum(weight * np.asarray(ctrl[(index + offset - 1) % len(ctrl)], float)
+               for offset, weight in enumerate(weights)) / 6
+
+
+def orbit_pose(frame):
+    """Periodic dolly/crane eye and aim, with a matching moving join."""
+    phase = (frame % ORBIT["frames"]) / ORBIT["frames"]
+    return closed_spline(ORBIT["eye"], phase), closed_spline(ORBIT["target"], phase)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -312,25 +349,29 @@ def build(mode):
     main.AddScaleOp().Set(Gf.Vec3f(1, 1, 1))
     cam_paths["Main"] = main.GetPath()
 
-    dolly = UsdGeom.Camera.Define(stage, cams.GetPath().AppendChild("Dolly"))
-    dolly.CreateFocalLengthAttr(DOLLY["focal"])
-    dolly.CreateHorizontalApertureAttr(DOLLY["h_ap"])
-    dolly.CreateVerticalApertureAttr(DOLLY["h_ap"] * 9 / 16)
-    dolly.CreateClippingRangeAttr(Gf.Vec2f(5, 100000))
-    ex = DOLLY["exposure"]
-    dolly.CreateExposureFStopAttr(ex["fStop"])
-    dolly.CreateExposureTimeAttr(ex["time"])
-    dolly.CreateExposureIsoAttr(ex["iso"])
-    dolly.CreateExposureResponsivityAttr(ex["responsivity"])
-    pose = dolly.AddTransformOp()
-    step = stage.GetTimeCodesPerSecond() / DOLLY["fps"]
-    for f in range(DOLLY["frames"]):
-        eye, target = dolly_pose(f)
-        view = Gf.Matrix4d().SetLookAt(Gf.Vec3d(*eye.tolist()), Gf.Vec3d(*target.tolist()), Gf.Vec3d(0, 0, 1))
-        pose.Set(view.GetInverse(), f * step)
     stage.SetStartTimeCode(0)
-    stage.SetEndTimeCode((DOLLY["frames"] - 1) * step)
-    cam_paths["Dolly"] = dolly.GetPath()
+    end_time = 0.0
+    for name, config, pose_at in (("Dolly", DOLLY, dolly_pose), ("Orbit360", ORBIT, orbit_pose)):
+        camera = UsdGeom.Camera.Define(stage, cams.GetPath().AppendChild(name))
+        camera.CreateFocalLengthAttr(config["focal"])
+        camera.CreateHorizontalApertureAttr(config["h_ap"])
+        camera.CreateVerticalApertureAttr(config["h_ap"] * 9 / 16)
+        camera.CreateClippingRangeAttr(Gf.Vec2f(5, 100000))
+        ex = config["exposure"]
+        camera.CreateExposureFStopAttr(ex["fStop"])
+        camera.CreateExposureTimeAttr(ex["time"])
+        camera.CreateExposureIsoAttr(ex["iso"])
+        camera.CreateExposureResponsivityAttr(ex["responsivity"])
+        pose = camera.AddTransformOp()
+        step = stage.GetTimeCodesPerSecond() / config["fps"]
+        samples = config["frames"] + int(config["loop"])
+        for frame in range(samples):
+            eye, target = pose_at(frame)
+            view = Gf.Matrix4d().SetLookAt(Gf.Vec3d(*eye.tolist()), Gf.Vec3d(*target.tolist()), Gf.Vec3d(0, 0, 1))
+            pose.Set(view.GetInverse(), frame * step)
+        end_time = max(end_time, (samples - 1) * step)
+        cam_paths[name] = camera.GetPath()
+    stage.SetEndTimeCode(end_time)
 
     render = ux.defineScope(stage, Sdf.Path("/Render")).GetPrim()
     for name, cpath in cam_paths.items():
@@ -351,7 +392,7 @@ def build(mode):
     print("wrote", path)
 
 
-def check_dolly(path):
+def check_dolly(path, camera_name="Dolly", config=None):
     """Refuse a dolly path that comes within min_clearance of any gprim's world box, environment or
     props. A box is conservative: it also keeps the camera out of the nozzle and collector ducts."""
     from pxr import Usd, UsdGeom
@@ -365,20 +406,31 @@ def check_dolly(path):
         r = cache.ComputeWorldBound(prim).ComputeAlignedRange()
         if not r.IsEmpty():
             boxes.append((str(prim.GetPath()), np.array(r.GetMin()), np.array(r.GetMax())))
-    cam = UsdGeom.Camera(stage.GetPrimAtPath("/World/Cameras/Dolly"))
+    config = DOLLY if config is None else config
+    cam = UsdGeom.Camera(stage.GetPrimAtPath(f"/World/Cameras/{camera_name}"))
     xf = UsdGeom.XformCache()
     worst = (1e9, None, None)
-    step = stage.GetTimeCodesPerSecond() / DOLLY["fps"]
-    for f in range(DOLLY["frames"]):
+    step = stage.GetTimeCodesPerSecond() / config["fps"]
+    positions = []
+    for f in range(config["frames"] + int(config["loop"])):
         xf.SetTime(Usd.TimeCode(f * step))
         p = np.array(xf.GetLocalToWorldTransform(cam.GetPrim()).ExtractTranslation())
+        positions.append(p)
         for name, lo, hi in boxes:
             d = float(np.linalg.norm(np.maximum(np.maximum(lo - p, 0), p - hi)))
             if d < worst[0]:
                 worst = (d, name, f)
-    print(f"dolly: {len(boxes)} gprim boxes, closest {worst[0]:.1f} cm to {worst[1]} at frame {worst[2]}")
-    if worst[0] < DOLLY["min_clearance"]:
-        raise RuntimeError(f"dolly path within {DOLLY['min_clearance']} cm of {worst[1]}")
+    print(f"{camera_name}: {len(boxes)} gprim boxes, closest {worst[0]:.1f} cm to {worst[1]} at frame {worst[2]}")
+    if worst[0] < config["min_clearance"]:
+        raise RuntimeError(f"{camera_name} path within {config['min_clearance']} cm of {worst[1]}")
+    if config["loop"]:
+        # Translation is linearly interpolated between authored matrices. Every point
+        # on a segment is at most half its length from one of its endpoints.
+        step_bound = float(np.linalg.norm(np.diff(positions, axis=0), axis=1).max()) / 2
+        lower_bound = worst[0] - step_bound
+        if lower_bound < config["min_clearance"]:
+            raise RuntimeError(f"{camera_name} interpolation clearance bound below minimum")
+        print(f"{camera_name}: interpolated-position clearance bound {lower_bound:.1f} cm")
 
 
 def check_stilts(path, margin=2.0):
@@ -424,4 +476,5 @@ if __name__ == "__main__":
     for mode in SCENES:
         build(mode)
     check_dolly(SCENES["reference"])
+    check_dolly(SCENES["reference"], "Orbit360", ORBIT)
     check_stilts(SCENES["reference"])

@@ -13,7 +13,9 @@ through a single override layer.
 
 ![Hero view: the nozzle and honeycomb behind the Ahmed reference body on the turntable](models/wind_tunnel/media/hero.jpg)
 
-[Watch the dolly pass the reference body (MP4)](models/wind_tunnel/media/dolly.mp4)
+[Watch the accepted dolly pass the reference body (MP4)](models/wind_tunnel/media/dolly.mp4)
+
+[Watch the loopable 360 degree dolly/crane tour (MP4)](models/wind_tunnel/media/orbit360.mp4)
 
 The environment is a plenum hall with acoustic wall panels and ceiling light panels. Upstream sits a
 contraction nozzle with a honeycomb visible through its exit; downstream, a bell-mouth collector with a bolted bulkhead.
@@ -89,7 +91,9 @@ In summary:
   any environment or prop bounding box; the current path's closest approach is 44.9 cm, to the
   floor at its low start. `tools/check_presentation.py` also checks every authored pose for
   body framing, camera aim, world-up orientation and travel from behind the tail to past the nose.
-  These checks do not sweep between samples or test occlusion.
+  These checks do not test occlusion. The added `Orbit360` camera makes one constant-speed turn
+  with a matching authored closure pose. Its video omits that duplicate endpoint; a conservative
+  bound also checks clearance between its linearly interpolated camera positions.
 
 **Not verified:**
 
@@ -249,6 +253,8 @@ and carry one warning, because their `/Render` scope sits beside the default pri
 Windows, Python 3.13, with [uv](https://github.com/astral-sh/uv) and an NVIDIA GPU:
 
 ```
+git clone https://github.com/sushiHex/stagewright.git
+cd stagewright
 uv venv --python 3.13 .venv
 uv pip install --python .venv/Scripts/python.exe "ovrtx==0.6.0.1791947691" "ovstage==0.3.0.1791986420" "usd-exchange==3.0.1" "usd-validation-nvidia==1.22.0" "numpy==2.5.4"
 uv pip install --python .venv/Scripts/python.exe "pynvvideocodec==2.2.3" "nvidia-nvimgcodec-cu12[all]==0.9.0.20" "warp-lang==1.18.0"
@@ -261,6 +267,8 @@ uv pip install --python .venv/Scripts/python.exe "pynvvideocodec==2.2.3" "nvidia
 .venv/Scripts/python.exe tools/render.py --res 1920x1080 --spp 256 --prefix final_
 .venv/Scripts/python.exe tools/render.py --products Main --qc --res 1920x1080 --spp 256 --prefix final_qc_
 .venv/Scripts/python.exe tools/render_motion.py --res 1280x720 --spp 64 --supersample 2 --encode
+.venv/Scripts/python.exe tools/render_motion.py --product Orbit360 --res 1280x720 --spp 64 --supersample 2 --encode
+.venv/Scripts/python.exe tools/check_loop.py           # container, repeat-pose and decoded seam checks
 .venv/Scripts/python.exe tools/build_media.py          # approved presentation outputs to models/wind_tunnel/media/
 ```
 
@@ -269,19 +277,60 @@ its own USD runtime. Stills land in `build/stills/`, frames in `build/frames/dol
 in `build/out/`. To encode an existing complete sequence, use `tools/render_motion.py --no-render --encode`. Add `--gif` only to request the optional GIF; that flag requires ffmpeg on the path.
 `tools/build_media.py` copies only fixed presentation output paths into `models/wind_tunnel/media/`, never `build/private/`.
 
+`Orbit360` is a wide dolly/crane tour through the environment. Its closed cubic B-spline
+changes distance, height and aim: a low wake-side approach, a rising sweep past the nozzle,
+a collector establishing view and an opposite-side return. It makes one full turn with
+continuous position, velocity and acceleration through the wrap, without an endpoint pause.
+Camera checks keep the body framed with environment context and check the complete nozzle
+and collector face in their establishing views.
+
+`Orbit360` defaults to its authored full-cycle frame count and cadence. Its renderer warms up
+around the orbit, approaches the start in playback order, and records two post-cycle repeat-pose
+images outside the numeric frame sequence. `tools/check_loop.py` checks those images for startup
+brightness changes and verifies source and decoded images around the loop boundary. Enable repeat
+in an MP4 player; the local review page does this automatically.
+
+Motion rendering skips pixel capture for discarded warmup poses while preserving their seek and
+convergence schedule. Supersampling filters the mapped CUDA image before copying RGB to the host;
+`--cpu-readback` retains the explicit CPU-copy reference path. Sequence-owned image codecs and
+filter buffers are reused. The filter, sample count and encoder quality settings are unchanged.
+Same-frame CUDA and CPU-reference captures matched exactly in verification.
+
+Still and motion rendering also use the documented RTX sample-batching setting.
+`--sample-batch` limits samples per kernel launch; the selected batch divides the explicit
+`--spp` budget, so the total sample count is unchanged. `--sample-batch 1` retains the reference
+launch schedule. With stills `--spp 0`, authored sample and batch settings are retained.
+The renderer's progression counter reports iterations; convergence still uses the sample budget.
+Batched captures were checked against reference views and repeat-pose stability.
+
 For another scene, motion rendering accepts `--scene`, `--product`, `--count` and `--fps`.
 `--res` sets the final output dimensions; `--supersample 2` applies the motion filter and
 `--supersample 1` uses native sampling. Supply a separate `--out` frame directory for custom scenes. Custom sequences write their video
-alongside those frames; only the default complete dolly writes `build/out/dolly.mp4`, the source
-used by `tools/build_media.py`.
+alongside those frames; only complete built-in sequences write their canonical `build/out/` videos, the sources
+used by `tools/build_media.py`. `Dolly` and `Orbit360` keep separate frame and video paths.
 
 Run `.venv/Scripts/python.exe tools/check_compute.py` for numerical and codec regression checks.
 It checks the spectral noise against an independent Fourier reference, mesh geometry, filtered
-downsampling, lossless PNG, JPEG, MP4 color/frame order and separation of custom/private outputs. Its fixtures stay under `build/checks/`.
+downsampling, buffer ownership, warmup capture policy, lossless PNG, JPEG, MP4 color/frame order and separation of custom/private outputs. Its fixtures stay under `build/checks/`.
 
 `tools/fit_check.py` exits non-zero if any check fails. With `--strict` it also fails when a check
 could not run, such as the car checks when the CarHero LFS content has not been fetched.
 `tools/render.py` exits non-zero if any requested camera produced no frame.
+
+## Local sharing package
+
+After rendering, checking the loop and refreshing public media, run:
+
+```
+.venv/Scripts/python.exe tools/build_share.py
+```
+
+It prepares `build/share/stagewright-review.zip` and `build/share/stagewright-source.zip` locally.
+Open `index.html` from either extracted archive for the hero image, accepted dolly, looping orbit,
+README, fit report and licence. The review archive is a compact media-and-notes package; the source
+archive also includes this repository's code and procedural assets for rebuilding. Dependencies,
+blueprint content, private renders and other build outputs are excluded. Checksums are included.
+Nothing is uploaded or published by these commands.
 
 ## Repository layout
 
@@ -290,7 +339,7 @@ models/wind_tunnel/assets/test_section.usda     the environment payload (root pr
 models/wind_tunnel/assets/textures/             procedural textures, generated by tools/build_env.py
 models/wind_tunnel/scenes/blueprint_override.usda   the drop-in override for the blueprint stage
 models/wind_tunnel/scenes/present.usda          presentation root: environment by reference, plus the Ahmed body,
-                             QC spheres, cameras (including the animated Dolly) and RenderProducts
+                             QC spheres, cameras (including Dolly and Orbit360) and RenderProducts
 models/wind_tunnel/scenes/present_payload.usda  the same, with the environment loaded as a payload
 tools/build_env.py           builds the environment and its textures
 tools/build_present.py       builds the presentation roots and checks the dolly path clearance
@@ -304,10 +353,12 @@ tools/video_io.py            PyNvVideoCodec NVENC encode and MP4 mux
 tools/video_pixels.py        Warp RGB-to-NV12 conversion
 tools/build_media.py         fixed presentation output paths to models/wind_tunnel/media/
 tools/check_compute.py       numerical, sampling, codec and output-routing checks
-tools/check_presentation.py  authored dolly framing, timing, travel and clearances
+tools/check_presentation.py  authored motion framing, timing, travel, closure and clearances
+tools/check_loop.py          rendered and decoded loop seam checks
+tools/build_share.py         verified local review/source archives
 tools/fit_check.py           the fit check, writes models/wind_tunnel/docs/fit-check.md
 tools/render.py              stills
-tools/render_motion.py       the dolly sequence, MP4 and optional GIF
+tools/render_motion.py       motion sequences, MP4 and optional GIF
 tools/smoke.py               renderer smoke test
 tools/rtx.py                 shared ovrtx session, stepping and readback helpers for the three above
 docs/                        project plan and handoff
@@ -331,7 +382,7 @@ the environment payload.
 
 ## Licences
 
-- **This repository's code and generated content:** Licence: TBD.
+- **This repository's code and generated content:** [MIT](LICENSE).
 - **Textures:** all procedural, computed in Warp by `tools/build_env.py` and written through nvImageCodec. No
   third-party textures, HDRIs or models are used.
 - **The blueprint** (`digital-twins-for-fluid-simulation`) is under the NVIDIA Omniverse License
