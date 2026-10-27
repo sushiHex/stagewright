@@ -5,6 +5,10 @@ then `docs/plan.md`, then this file.
 
 ## Where things stand
 
+- Public repository: [stagewright](https://github.com/sushiHex/stagewright), branch `main`.
+  Initial public release commit: `29a3c89`. Public visibility, MIT detection and exact remote-tree
+  parity were verified. Protected outputs and dependencies are excluded from the full history.
+
 - Tasks 1 to 8 of `docs/plan.md` are done: the environment builds, validates, passes
   `tools/fit_check.py --strict` (29 checks, 0 FAIL, 0 NOT CHECKED), and renders.
 - Task 9 (gsplat backdrop) is not started.
@@ -28,9 +32,8 @@ then `docs/plan.md`, then this file.
   body/environment framing and camera clearance checks pass for both roots. The full-quality render,
   repeat-pose, source/decoded seam and timestamp checks passed; public loop media is refreshed.
   Local review/source archives are refreshed with the wider shot and current tools.
-  MIT remains applied. The owner authorized committing and publishing this approved state to
-  the public repository `https://github.com/sushiHex/stagewright`. Further changes still require
-  explicit commit authorization.
+  MIT remains applied. This approved state is published to `https://github.com/sushiHex/stagewright`.
+  Further changes still require explicit commit authorization.
 - Further private profiling identified renderer convergence as the optimization priority. Shared
   still/motion sample batching preserves the explicit sample budget, with a reference option and
   authored-setting preservation. Image acceptance, CPU budget/control tests, production motion

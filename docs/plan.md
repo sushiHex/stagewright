@@ -244,12 +244,13 @@ parametric Python through usdex, which an agent can regenerate deterministically
     default mode availability. Re-run the candidates with adequate GPU headroom before changing
     defaults. No quality reductions, new dependencies, watchdog changes or published figures.
 
-18. **Public release: authorized 2026-10-27.** Publish the approved MIT-licensed presentation and
+18. **Public release: DONE 2026-10-27.** Published the approved MIT-licensed presentation and
     tools to `https://github.com/sushiHex/stagewright` on `main`. Audit the complete reachable history
     and final tree, preserve accepted media hashes, and exclude build outputs, private renders,
     profiling records, dependencies, external assets, secrets and restricted context. Commit messages
     remain neutral with no trailers. Verify the remote commit, public visibility and repository
-    contents after push. Further optimization remains separate from this release.
+    contents after push. Public visibility, MIT detection, exact remote-tree parity and the initial
+    release commit `29a3c89` were verified. Further optimization remains separate from this release.
 
 **Gate:** if task 6 has no presentable still five hours into the build, ship stills only.
 
