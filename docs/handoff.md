@@ -112,6 +112,8 @@ sublayer path was updated without rendering or copying its images.
 
 ## Implementation notes
 
+- `.gitattributes` keeps ASCII USD files at LF so verified scene hashes survive Windows checkouts.
+
 - `tools/check_compute.py` checks the Warp spectral implementation against a Fourier reference,
   analytic mesh cases, lossless PNG, JPEG and MP4 color/frame ordering. Fixtures stay in `build/`.
 - Only complete canonical motion sequences can write their built-in `build/out/` videos; custom

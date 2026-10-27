@@ -113,7 +113,7 @@ def main():
     texture_names = ("belt", "concrete", "epoxy", "honeycomb", "perf", "turntable")
     textures = [MODEL / "assets" / "textures" / f"{name}_{kind}.png"
                 for name in texture_names for kind in ("color", "normal", "orm")]
-    sources = [*review, ROOT / "CLAUDE.md", ROOT / ".gitignore",
+    sources = [*review, ROOT / "CLAUDE.md", ROOT / ".gitignore", ROOT / ".gitattributes",
                *(ROOT / "docs").glob("*.md"), *(ROOT / "tools").glob("*.py"),
                MODEL / "assets" / "test_section.usda", *textures,
                MODEL / "scenes" / "present.usda", MODEL / "scenes" / "present_payload.usda"]
