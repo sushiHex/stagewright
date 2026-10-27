@@ -87,15 +87,15 @@ RENDER = {"resolution": (1920, 1080), "spp": 256}
 
 # Animated camera /World/Cameras/Dolly: one slow move, rendered by tools/render_motion.py.
 # It starts low on the wake side, behind the model's tail, then swings out to the left and cranes
-# up while it dollies upstream, settling on a three-quarter view close to the Hero shot (nozzle and
-# honeycomb beyond the model). Eye and target each follow one cubic Bezier, traversed with a
+# up while it dollies upstream, passing the nose and looking back toward the body and collector.
+# Eye and target each follow one cubic Bezier, traversed with a
 # cosine ease so the move starts and stops at rest. The camera looks at the target with world +Z
 # up, so there is no roll. Samples are authored once per output frame, at time code
 # frame * tcps / fps (the stage runs at 60 time codes per second; the move is cut at 24 fps).
 DOLLY = {
     "fps": 24, "frames": 216,  # 9 s
-    "eye": ((-60.0, -1000.0, 45.0), (-210.0, -900.0, 50.0), (-470.0, -720.0, 105.0), (-540.0, -560.0, 135.0)),
-    "target": ((0.0, 40.0, 80.0), (0.0, 160.0, 110.0), (0.0, 450.0, 200.0), (0.0, 640.0, 250.0)),
+    "eye": ((-60.0, -1000.0, 45.0), (-680.0, -950.0, 110.0), (-680.0, 180.0, 180.0), (-500.0, 550.0, 220.0)),
+    "target": ((0.0, 40.0, 80.0), (0.0, 93.0, 100.0), (0.0, 93.0, 110.0), (0.0, 93.0, 105.0)),
     "focal": 20.0, "h_ap": 36.0,
     "exposure": {"fStop": 5.0, "time": 0.02, "iso": 100.0, "responsivity": 1.0},
     "min_clearance": 30.0,  # cm, from every gprim's world box (environment and props)

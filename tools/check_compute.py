@@ -9,6 +9,7 @@ import warp as wp
 import meshlib as mesh
 import texture_compute as tex
 from image_io import read_rgb, write_rgb
+from image_compute import downsample_rgb
 from video_io import encode_mp4
 
 OUT = Path(__file__).resolve().parent.parent / "build" / "checks"
@@ -57,6 +58,26 @@ def check_mesh():
     assert np.isfinite(mesh.creased_normals([[0., 0., 0.]] * 3, [[0, 1, 2]], 35)).all()
 
 
+def check_sampling():
+    pixels = np.arange(48, dtype=np.uint8).reshape(4, 4, 3)
+    expected = np.array([[[9, 10, 11], [15, 16, 17]],
+                         [[30, 31, 32], [36, 37, 38]]], dtype=np.uint8)
+    np.testing.assert_array_equal(downsample_rgb(pixels, 2), expected)
+    np.testing.assert_array_equal(downsample_rgb(pixels, 4), [[[23, 24, 25]]])
+    rgba = np.concatenate((pixels, np.full((4, 4, 1), 255, np.uint8)), axis=2)
+    np.testing.assert_array_equal(downsample_rgb(rgba, 2), expected)
+    same = downsample_rgb(rgba, 1)
+    np.testing.assert_array_equal(same, pixels)
+    assert not np.shares_memory(same, rgba) and same.flags.c_contiguous
+    for bad, factor in ((pixels, 0), (pixels, True), (pixels[:3], 2)):
+        try:
+            downsample_rgb(bad, factor)
+        except (TypeError, ValueError):
+            pass
+        else:
+            raise AssertionError("Invalid downsample request accepted")
+
+
 def check_codecs():
     OUT.mkdir(parents=True, exist_ok=True)
     paths = []
@@ -89,8 +110,38 @@ def check_codecs():
     assert output.is_file() and not output.with_suffix(".partial.mp4").exists()
 
 
+def check_motion_routes():
+    import contextlib
+    import io
+    from unittest.mock import patch
+    import render_motion as motion
+
+    custom = OUT / "private_fixture" / "present.usda"
+    with contextlib.redirect_stderr(io.StringIO()):
+        try:
+            motion.parse_args(["--scene", str(custom), "--no-render", "--encode"])
+        except SystemExit as error:
+            assert error.code == 2
+        else:
+            raise AssertionError("Custom scene accepted the public frame directory")
+    frames = OUT / "custom_frames"
+    frames.mkdir(parents=True, exist_ok=True)
+    (frames / "0000.png").write_bytes((OUT / "color_0.png").read_bytes())
+    args = motion.parse_args(["--scene", str(custom), "--out", str(frames),
+                              "--count", "1", "--no-render", "--encode"])
+    assert args.count == 1
+    with patch("video_io.encode_mp4") as encoder, patch("subprocess.run") as external:
+        motion.encode(frames, 640, 12, fps=24, count=1)
+        destination = encoder.call_args.args[1]
+        assert destination == frames.resolve() / "dolly.mp4"
+        assert destination != motion.OUT / "dolly.mp4"
+        external.assert_not_called()
+
+
 if __name__ == "__main__":
     check_spectrum()
     check_mesh()
+    check_sampling()
     check_codecs()
-    print("PASS: spectral reference, mesh geometry, PNG/JPEG, MP4 color and frame order")
+    check_motion_routes()
+    print("PASS: spectral reference, mesh geometry, filtered downsampling, PNG/JPEG, MP4 color/frame order and private output separation")

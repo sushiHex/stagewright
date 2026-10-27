@@ -27,7 +27,7 @@ COUNT = 216  # must match DOLLY["frames"] in tools/build_present.py
 WARMUP_PASSES = 2
 
 
-def render(frames, res, spp, out_dir, max_steps, scene=SCENE, product=PRODUCT, fps=FPS, count=COUNT):
+def render(frames, res, spp, out_dir, max_steps, scene=SCENE, product=PRODUCT, fps=FPS, count=COUNT, supersample=2):
     if scene.resolve() != SCENE.resolve() and out_dir.resolve() == FRAMES.resolve():
         raise ValueError("Custom scenes require --out outside the default presentation frame directory")
     import numpy as np
@@ -36,7 +36,8 @@ def render(frames, res, spp, out_dir, max_steps, scene=SCENE, product=PRODUCT, f
     import rtx as rt
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    layer = stills.write_override(scene, [product], res, spp, ghost=False, qc=False)
+    render_res = tuple(size * supersample for size in res)
+    layer = stills.write_override(scene, [product], render_res, spp, ghost=False, qc=False)
     product = f"/Render/{product}"
     # The first frames rendered after the stage loads come out slightly darker than the same
     # frames rendered later (it looks like content still streaming in), which pops at the start
@@ -62,6 +63,9 @@ def render(frames, res, spp, out_dir, max_steps, scene=SCENE, product=PRODUCT, f
             if not keep:
                 continue
             px = images[product]
+            if supersample > 1:
+                from image_compute import downsample_rgb
+                px = downsample_rgb(px, supersample)
             progression, converged = status[product]
             rgb = px[..., :3].astype(np.float32)
             write_rgb(out_dir / f"{f:04d}.png", px)
@@ -111,6 +115,8 @@ def parse_args(argv=None):
     ap.add_argument("--frames", default="all", help="'all' or a comma list of frame numbers")
     ap.add_argument("--res", default="1280x720")
     ap.add_argument("--spp", type=int, default=64)
+    ap.add_argument("--supersample", type=int, choices=(1, 2), default=2,
+                    help="render scale before Warp filtered downsampling; --res is the output size")
     ap.add_argument("--out", type=Path, default=FRAMES,
                     help="frame directory; custom/preview videos are written here too")
     ap.add_argument("--max-steps", type=int, default=0, help="step cap per frame; default 4 x spp + 64")
@@ -163,7 +169,7 @@ def main():
     a = parse_args()
     if not a.no_render:
         render(a.frames, a.res, a.spp, a.out.resolve(), a.max_steps or 4 * max(a.spp, 64) + 64,
-               a.scene.resolve(), a.product, a.fps, a.count)
+               a.scene.resolve(), a.product, a.fps, a.count, a.supersample)
     if a.encode:
         encode(a.out.resolve(), a.gif_width, a.gif_fps, a.gif, a.fps, a.count, a.product)
 

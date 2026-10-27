@@ -20,6 +20,11 @@ then `docs/plan.md`, then this file.
 - Tasks 10a to 10d are DONE, including regenerated final stills, QC and the full dolly. MP4 container
   metadata, uniform timestamps and sampled decoded frames were checked. The public JPEGs and MP4
   were refreshed through `tools/build_media.py` from fixed presentation outputs.
+- The focused presentation pass is complete: the dolly passes the body, the collector bulkhead
+  has fasteners, and motion supports Warp triangle-filtered supersampling with a native fallback.
+  Final stills, QC, full dolly and public media are refreshed. MP4 metadata and sampled decoded
+  views pass checks. `tools/check_presentation.py` verifies all 216 poses, framing and clearances.
+  Fine-pattern shimmer remains a visual acceptance risk; it is not claimed to be eliminated.
 - Task 10 is complete against its delivery gates. Optional task 10e is deferred; dataset terms and
   renderer compatibility remain unverified. No dataset was downloaded. Task 11 is complete.
 - The initial baseline is commit `227b9e0`; task 11 is isolated from subsequent visual changes. Commit only when the owner asks;
@@ -31,10 +36,11 @@ then `docs/plan.md`, then this file.
 .venv/Scripts/python.exe tools/build_env.py
 .venv/Scripts/python.exe tools/build_present.py
 .venv/Scripts/nvidia_usd_validate.exe models/wind_tunnel/assets/test_section.usda
+.venv/Scripts/python.exe tools/check_presentation.py
 .venv/Scripts/python.exe tools/fit_check.py --strict
 .venv/Scripts/python.exe tools/render.py --res 1920x1080 --spp 256 --prefix final_
 .venv/Scripts/python.exe tools/render.py --products Main --qc --res 1920x1080 --spp 256 --prefix final_qc_
-.venv/Scripts/python.exe tools/render_motion.py --res 1280x720 --spp 64 --encode
+.venv/Scripts/python.exe tools/render_motion.py --res 1280x720 --spp 64 --supersample 2 --encode
 .venv/Scripts/python.exe tools/build_media.py
 .venv/Scripts/python.exe tools/check_compute.py
 ```
@@ -49,14 +55,15 @@ pinned commit `62610544f41a338a8abbbe32e2e902d4107c506d`, LFS skipped, CarHero f
 | `build/stills/final_{hero,detail,main,wake,qc_main}.png` | finals, 1920x1080, 256 spp |
 | `build/stills/*.png` (no prefix) | older 960x540 review passes |
 | `build/out/dolly.mp4` | 216-frame dolly, 1280x720, 64 spp; GIF is optional with `--gif` |
-| `models/wind_tunnel/media/*.jpg`, `models/wind_tunnel/media/dolly.mp4` | fixed presentation copies for README; the older GIF is no longer embedded |
+| `models/wind_tunnel/media/*.jpg`, `models/wind_tunnel/media/dolly.mp4` | fixed presentation copies for README; GIF generation is optional and not copied by default |
 | `build/private/*.png` | renders containing the blueprint's own car. **Never publish, never commit, never copy into public media** |
 
 ## Next steps, in order
 
-1. A focused presentation pass: make the dolly travel past the body and reduce honeycomb shimmer.
-   Keep the existing body and collector. Verify clearance/framing and compare adjacent frames.
-2. Optional task 10e remains deferred. Revisit only after terms acceptance and explicit download
+1. Choose the repository licence and decide whether to publish. Nothing has been published.
+2. Review fine-pattern motion at the intended playback size. Native sampling remains available
+   with `--supersample 1` if preferred; do not claim the sampling aid eliminates shimmer.
+3. Optional task 10e remains deferred. Revisit only after terms acceptance and explicit download
    approval, with one renderer compatibility trial before any migration.
 
 The wind tunnel lives under `models/wind_tunnel/{assets,scenes,docs,media}`. Root `docs/` holds
@@ -71,6 +78,8 @@ sublayer path was updated without rendering or copying its images.
 
 - `tools/check_compute.py` checks the Warp spectral implementation against a Fourier reference,
   analytic mesh cases, lossless PNG, JPEG and MP4 color/frame ordering. Fixtures stay in `build/`.
+- Only the canonical default motion sequence can write `build/out/dolly.mp4`; custom and preview
+  videos stay with their explicit frame directories, away from the fixed public media source.
 - PyNvVideoCodec's packed RGB path produced full-range YUV without range metadata in this pinned
   build. `tools/video_pixels.py` computes limited-range BT.601 NV12 explicitly in Warp.
 - `tools/video_io.py` drains encoder packets, uses a 90 kHz clock and disables B-frames for direct
@@ -83,9 +92,9 @@ sublayer path was updated without rendering or copying its images.
 ## Known weaknesses (presentation)
 
 - The Ahmed body reads as a box at some angles.
-- The dolly does not travel past the body.
-- Slight honeycomb shimmer in motion.
-- The collector is a smooth tube with little detail.
+- Honeycomb fine-pattern shimmer remains an acceptance risk. Motion has a Warp triangle-filtered
+  supersampling option, with native sampling retained. Do not claim every view is shimmer-free.
+- Collector geometry remains simplified; its bolted bulkhead now adds mounting detail.
 
 ## Decisions waiting on the owner
 

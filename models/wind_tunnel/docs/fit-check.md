@@ -88,7 +88,7 @@ Domain in world space (cm): **X -144.0..144.0, Y -650.0..430.0, Z -4.0..248.0**.
 
 ## 3. Environment bounds and containment
 
-- World bound of `/World/WindTunnel` (BBoxCache, useExtentsHint=False, purposes default+render): (-1230.0, -1630.0, -30.0)..(1230.0, 1730.0, 1230.0), from 44 renderable gprims.
+- World bound of `/World/WindTunnel` (BBoxCache, useExtentsHint=False, purposes default+render): (-1230.0, -1630.0, -30.0)..(1230.0, 1730.0, 1230.0), from 45 renderable gprims.
 - Authored extents agree with the points of every environment mesh: largest disagreement 0.0000 cm.
 - The environment bound encloses the domain in X, Y and Z-top: True (the domain floor at Z -4.0 sits 4.0 cm below the floor top, see below).
 
@@ -127,6 +127,7 @@ Every renderable environment gprim against the domain box (AABB):
 | `Geometry/Tunnel/ChamberPortal` | (-949.0, 1575.0, -11.8)..(949.0, 1655.0, 909.0) | (0.0, 1145.0, 0.0) | clear |
 | `Geometry/Tunnel/Collector` | (-600.0, -1600.0, 0.0)..(600.0, -1100.0, 700.0) | (0.0, 450.0, 0.0) | clear |
 | `Geometry/Tunnel/CollectorFace` | (-690.0, -1217.0, 0.0)..(690.0, -1207.0, 790.0) | (0.0, 557.0, 0.0) | clear |
+| `Geometry/Tunnel/CollectorFasteners` | (-648.0, -1207.0, 62.8)..(648.0, -1205.0, 748.0) | (0.0, 555.0, 0.0) | clear |
 | `Geometry/Tunnel/CollectorRibs` | (-618.0, -1465.0, 0.0)..(618.0, -1230.0, 718.0) | (0.0, 580.0, 0.0) | clear |
 | `Geometry/Tunnel/CollectorScreen` | (-418.7, -1583.0, 0.0)..(418.7, -1579.0, 518.7) | (0.0, 929.0, 0.0) | clear |
 | `Geometry/Tunnel/CollectorScreenBacking` | (-420.2, -1585.0, 0.0)..(420.2, -1585.0, 520.2) | (0.0, 935.0, 0.0) | clear |

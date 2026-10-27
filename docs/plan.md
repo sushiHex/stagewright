@@ -1,6 +1,6 @@
 # Build plan
 
-Status as of 2026-10-27 (handoff notes in `docs/handoff.md`; tasks 10 and 11 are complete; presentation refinement is next):
+Status as of 2026-10-27 (handoff notes in `docs/handoff.md`; tasks 10 and 11 are complete; presentation refinement is complete with documented visual limits):
 
 - **Done:**
   - The ovrtx smoke render works on the RTX 3090 (lit, shadowed, PathTracing).
@@ -158,8 +158,8 @@ parametric Python through usdex, which an agent can regenerate deterministically
     - **Done when (task 10):** README toolchain table names an NVIDIA tool for every stage,
       the install lines in CLAUDE.md and README match, finals and the dolly are re-rendered
       through the new path, and ffmpeg is no longer required unless `--gif` is passed.
-      These gates pass. Optional task 10e is deferred and does not block task 11; no dataset terms
-      have been accepted or downloads authorized.
+      These gates pass. Optional task 10e is deferred and does not block task 11; dataset terms
+      acceptance and download approval remain unconfirmed.
 11. **Multi-model layout: DONE 2026-10-27.** The wind tunnel now lives under
     `models/wind_tunnel/{assets,scenes,docs,media}`. Project planning stays in root `docs/`, and
     builders/shared helpers stay in `tools/`. `tools/project_paths.py` defines the default model
@@ -173,10 +173,23 @@ parametric Python through usdex, which an agent can regenerate deterministically
     - Motion rendering accepts scene, product, fps and count explicitly. Custom scenes require
       separate output directories; only the canonical default sequence writes the public-source
       dolly MP4. This prevents private/custom scene renders entering the fixed media copy path.
-12. **Focused presentation refinement.** Improve the dolly so it passes the body, with clearance
-    and framing checks. Trial softer honeycomb wall transitions and rougher metal walls, comparing
-    adjacent frames at matching poses before deciding whether to retain the change. Keep the
-    existing body, collector and stage contract. No additional assets or tooling.
+12. **Focused presentation refinement: DONE 2026-10-27, with visual limits.** The dolly now
+    travels from behind the tail to beyond the nose, with the body framed throughout. The new
+    `tools/check_presentation.py` checks actual sample timing, positions, aim, world-up, framing,
+    travel and existing gprim/stilt clearances. No between-sample sweep or occlusion claim is made.
+    The collector bulkhead adds matching washer/hex-head fasteners using the nozzle hardware helper;
+    the existing nozzle hardware, body shape and stage contract are preserved.
+    - Motion offers native sampling (`--supersample 1`) and a default 2x render with a Warp triangle
+      prefilter/downsample (`--supersample 2`). The output dimensions are still set by `--res`.
+      Independent numerical tests cover the filter. Matched adjacent-frame trials informed the
+      choice; the original material is retained. Fine-pattern shimmer remains a visual acceptance
+      risk, not a solved or universally eliminated artifact.
+    - Rebuilt geometry passes strict fit with 29 checks, none failed/unchecked, and validation has
+      only the documented exceptions. Camera framing/travel/clearance checks pass all 216 poses.
+    - Final stills, QC and the complete filtered dolly were regenerated. Container timestamps,
+      dimensions and frame count pass; sampled decoded views match source PNGs and show the new
+      pass beyond the nose. Public JPEG/MP4 copies were refreshed from fixed presentation paths.
+      Source and output routing received independent review. No additional assets were downloaded.
 
 **Gate:** if task 6 has no presentable still five hours into the build, ship stills only.
 

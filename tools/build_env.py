@@ -87,6 +87,7 @@ CFG = {
         "screen_y": -1585.0,     # safety screen across the diffuser, against the downstream wall
         "screen_pitch": 45.0, "screen_bar": 5.0,
         "face_y": -1212.0, "face_w": 90.0, "face_t": 10.0,  # bulkhead frame around the bell mouth
+        "face_bolt_pitch": 60.0,  # visible fasteners on the upstream face of the bulkhead
         "fill_y": -1260.0, "fill_intensity": 900.0,  # dim light inside the throat, facing downstream
     },
     # Centred on the hero car's mid-wheelbase, Y 92.9 (models/wind_tunnel/docs/fit-check.md, section 4).
@@ -296,6 +297,21 @@ def honeycomb_frame():
     return parts
 
 
+def flange_bolts(path, axis, hardware):
+    """Matching washer and chamfered hex-head geometry along a flange centreline."""
+    pitch = hardware["bolt_pitch"]
+    points, _ = ml.resample(path, pitch, margin=pitch * 0.6)
+    direction = np.asarray(axis, float)
+    direction /= np.linalg.norm(direction)
+    bolts = []
+    for i, point in enumerate(points):
+        bolts.append(ml.ngon_prism(point, direction, hardware["washer_r"], hardware["washer_h"], n=16))
+        head = point + direction * hardware["washer_h"]
+        bolts.append(ml.ngon_prism(head, direction, hardware["bolt_r"], hardware["bolt_h"],
+                                   n=6, spin=0.37 * i, chamfer=0.3))
+    return bolts
+
+
 def nozzle_hardware():
     """Exit flange with bolt heads, stiffener ribs and seam grooves on the outer skin."""
     n, fl = CFG["nozzle"], CFG["flange"]
@@ -306,12 +322,7 @@ def nozzle_hardware():
     flange = [ml.sweep(path, ml.rect_section(t - 2.0, t + fl["width"], 0.0, fl["thick"]), (0, 1, 0))]
     # Bolts on the downstream face of the flange, along the bolt circle.
     bolt_path = u_path(y0, hw + t + fl["bolt_offset"], h + t + fl["bolt_offset"], r + t + fl["bolt_offset"])
-    pts, _ = ml.resample(bolt_path, fl["bolt_pitch"], margin=fl["bolt_pitch"] * 0.6)
-    bolts = []
-    for i, p in enumerate(pts):
-        bolts.append(ml.ngon_prism(p, (0, -1, 0), fl["washer_r"], fl["washer_h"], n=16))
-        head = p + np.array([0, -fl["washer_h"], 0])
-        bolts.append(ml.ngon_prism(head, (0, -1, 0), fl["bolt_r"], fl["bolt_h"], n=6, spin=0.37 * i, chamfer=0.3))
+    bolts = flange_bolts(bolt_path, (0, -1, 0), fl)
     rb, sm = CFG["nozzle_ribs"], CFG["nozzle_seams"]
     ribs = [ml.sweep(u_path(y, *nozzle_size(y)), ml.rect_section(t - 3.0, t + rb["height"], -rb["half_w"], rb["half_w"]),
                      (0, 1, 0)) for y in rb["y"]]
@@ -575,6 +586,12 @@ def build_parts(tiles):
     part("Tunnel", "CollectorFace", "ShellRib",
          ml.sweep(u_path(cc["face_y"], ohw, oh, orr), ml.rect_section(-3.0, cc["face_w"], -cc["face_t"] / 2,
                                                                       cc["face_t"] / 2), (0, 1, 0)), crease=40.0)
+    # The collector shares the nozzle's fastener style, spaced along its bulkhead centreline.
+    bolt_offset = cc["face_w"] / 2
+    bolt_path = u_path(cc["face_y"] + cc["face_t"] / 2, ohw + bolt_offset,
+                       oh + bolt_offset, orr + bolt_offset)
+    hardware = dict(CFG["flange"], bolt_pitch=cc["face_bolt_pitch"])
+    part("Tunnel", "CollectorFasteners", "Metal", *flange_bolts(bolt_path, (0, 1, 0), hardware))
     # Safety screen across the diffuser end: a dark backing face and a grid of bars before it.
     ys = cc["screen_y"]
     off = (cc["lip_y"] - R - ys) * math.tan(math.radians(cc["diffuser_deg"]))

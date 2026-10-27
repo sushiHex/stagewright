@@ -63,7 +63,9 @@ presentation outputs in `tools/build_media.py`. MP4 uses PyNvVideoCodec with NVE
 libav-based muxer; the ffmpeg executable is needed only for `tools/render_motion.py --encode --gif`.
 Warp computes periodic spectral noise, material maps and the heavier mesh operations. numpy remains
 for array exchange, USD packing and diagnostic checks. Run `tools/check_compute.py` for numerical
-and codec regressions. The remaining task 10e material trial needs the owner's dataset acceptance.
+and codec regressions. `tools/check_presentation.py` checks authored motion and framing. Motion uses
+Warp filtered downsampling with `--supersample 2`; `--res` remains the output size. Optional task
+10e is deferred pending dataset acceptance and download approval.
 
 - **Run throwaway probe scripts with `python -I`.** A stray `warp.py` sitting next to a probe script
   shadowed the real `warp` package on 2026-10-26. Never name a file in `tools/` after a package.
