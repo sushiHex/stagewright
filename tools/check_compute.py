@@ -1,0 +1,96 @@
+"""Numerical and codec regression checks. Writes fixtures only under build/checks."""
+import ctypes
+from pathlib import Path
+
+import numpy as np
+import PyNvVideoCodec as nvc
+import warp as wp
+
+import meshlib as mesh
+import texture_compute as tex
+from image_io import read_rgb, write_rgb
+from video_io import encode_mp4
+
+OUT = Path(__file__).resolve().parent.parent / "build" / "checks"
+
+
+def check_spectrum():
+    n = 64
+    raw = wp.empty((n, n), dtype=wp.vec2d, device=tex.DEVICE)
+    wp.launch(tex._white, (n, n), inputs=[raw, 11, n], device=tex.DEVICE)
+    # Independent Fourier reference for the custom radix-two Warp implementation.
+    freq = np.hypot(np.fft.fftfreq(n)[:, None], np.fft.fftfreq(n)[None, :])
+    freq[0, 0] = 1
+    white = raw.numpy()[..., 0]
+    for beta in (0.6, 2.0, 3.2):
+        spectrum = np.fft.fft2(white) * freq ** (-beta / 2)
+        spectrum[0, 0] = 0
+        expected = np.fft.ifft2(spectrum).real
+        expected = (expected - expected.mean()) / expected.std()
+        actual = tex.noise(n, beta, 11).numpy()
+        np.testing.assert_allclose(actual, expected, atol=1e-10)
+        np.testing.assert_array_equal(actual, tex.noise(n, beta, 11).numpy())
+
+
+def check_mesh():
+    points = np.array([[-1., -2., 0.], [1., -2., 0.], [1., 2., 0.], [-1., 2., 0.]])
+    faces = [[0, 1, 2, 3]]
+    np.testing.assert_allclose(mesh.creased_normals(points, faces, 35), [[0., 0., 1.]] * 4)
+    np.testing.assert_allclose(mesh.box_uv(points, faces, (2., 4.)),
+                               [[-.5, -.5], [.5, -.5], [.5, .5], [-.5, .5]])
+    # A bent path checks tangent interpolation, margins and nonuniform segment lengths.
+    path = [[0., 0., 0.], [0., 3., 0.], [4., 3., 0.]]
+    p, t = mesh.resample(path, 2., .5)
+    np.testing.assert_allclose(p, [[0., 1.25, 0.], [0., 2.75, 0.], [1.25, 3., 0.], [2.75, 3., 0.]])
+    np.testing.assert_allclose(t, [[0., 1., 0.], [0., 1., 0.], [1., 0., 0.], [1., 0., 0.]])
+    p, f = mesh.disc(2., 3., 5., 1., 4., 32)
+    np.testing.assert_allclose(p[0], [6., 3., 5.])
+    np.testing.assert_allclose(p[32], [6., 3., 1.])
+    assert mesh.signed_volume(p, f) > 0
+    profile = mesh.u_profile(4., 7., 1., 8)
+    np.testing.assert_allclose(profile[[0, -1]], [[-4., 0.], [4., 0.]])
+    sec = mesh.rect_section(-1., 1., -1., 1.)
+    p, f = mesh.sweep([[0., 0., 0.], [0., 3., 0.]], sec, (0., 0., 1.))
+    np.testing.assert_allclose(p[4:] - p[:4], [[0., 3., 0.]] * 4)
+    assert mesh.signed_volume(p, f) > 0
+    # Degenerate faces must produce finite corner normals.
+    assert np.isfinite(mesh.creased_normals([[0., 0., 0.]] * 3, [[0, 1, 2]], 35)).all()
+
+
+def check_codecs():
+    OUT.mkdir(parents=True, exist_ok=True)
+    paths = []
+    colors = ([230, 30, 15], [15, 30, 230])
+    for i, color in enumerate(colors):
+        pixels = np.empty((256, 256, 3), dtype=np.uint8)
+        pixels[:] = color
+        path = OUT / f"color_{i}.png"
+        write_rgb(path, pixels)
+        np.testing.assert_array_equal(read_rgb(path), pixels)
+        write_rgb(OUT / f"color_{i}.jpg", pixels)
+        np.testing.assert_allclose(read_rgb(OUT / f"color_{i}.jpg").mean((0, 1)), color, atol=3)
+        paths.append(path)
+    output = encode_mp4(paths * 12, OUT / "colors.mp4", 24)
+    decoder = nvc.CreateSimpleDecoder(str(output), outputColorType=nvc.OutputColorType.RGB)
+    metadata = decoder.get_stream_metadata()
+    assert metadata.num_frames == 24 and metadata.average_fps == 24
+    frames = decoder.get_batch_frames_by_index([0, 1, 22, 23])
+    assert len(frames) == 4
+    for frame, expected in zip(frames, (colors[0], colors[1], colors[0], colors[1])):
+        memory = (ctypes.c_uint8 * frame.framesize()).from_address(frame.GetPtrToPlane(0))
+        pixels = np.ctypeslib.as_array(memory).reshape(frame.shape)
+        np.testing.assert_allclose(pixels.mean((0, 1)), expected, atol=3)
+    try:
+        encode_mp4([paths[0], OUT / "missing.png"], OUT / "colors.mp4", 24)
+    except FileNotFoundError:
+        pass
+    else:
+        raise AssertionError("Missing frame was accepted")
+    assert output.is_file() and not output.with_suffix(".partial.mp4").exists()
+
+
+if __name__ == "__main__":
+    check_spectrum()
+    check_mesh()
+    check_codecs()
+    print("PASS: spectral reference, mesh geometry, PNG/JPEG, MP4 color and frame order")

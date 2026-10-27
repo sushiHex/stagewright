@@ -1,0 +1,25 @@
+#usda 1.0
+(
+    defaultPrim = "World"
+    endTimeCode = 600
+    startTimeCode = 0
+    doc = """Override layer: swaps the blueprint's wind tunnel environment for the open-jet test
+    section. It sublayers the blueprint's own entry point and replaces the payload on
+    /World/WindTunnel with an explicit list-op, so the original windTunnelEnv payload no longer
+    contributes. Nothing else in the blueprint stage is touched. tools/fit_check.py verifies it."""
+    metersPerUnit = 0.01
+    subLayers = [
+        @../external/blueprint/source/specializations/auto-aero/stages/Main.usda@
+    ]
+    timeCodesPerSecond = 60
+    upAxis = "Z"
+)
+
+over "World"
+{
+    over "WindTunnel" (
+        payload = [@../assets/test_section.usda@</Environment>]
+    )
+    {
+    }
+}
