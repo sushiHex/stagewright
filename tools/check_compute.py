@@ -108,7 +108,7 @@ def check_capture_policy():
             frame = lambda progress, done: SimpleNamespace(progression=progress, converged=done)
             self.results = iter((result(A=[frame(1, False)], B=[]),
                                  result(A=[frame(2, True)], B=[frame(1, False)]),
-                                 result(B=[frame(2, False)])))
+                                 result(B=[frame(2, True)])))
             self.calls = []
 
         def step(self, **kwargs):
@@ -125,12 +125,19 @@ def check_capture_policy():
                                                read_pixels=reader)
         assert markers == {"A": None, "B": None}
         assert images == {"A": "A/Color", "B": "B/Color"}
-        assert status == captured_status == {"A": (2, True), "B": (2, False)}
+        assert status == captured_status == {"A": (2, True), "B": (2, True)}
         assert discarded.calls == captured.calls
         assert [call["render_products"] for call in discarded.calls] == [{"A", "B"}, {"A", "B"}, {"B"}]
         empty = Mock()
         empty.step.return_value = {}
         assert rtx.converge(empty, ["A"], 7, .25, 2, capture=False) == ({}, {})
+        unfinished = Mock()
+        unfinished.step.return_value = result(A=[SimpleNamespace(progression=1, converged=False)])
+        reader.reset_mock()
+        with np.testing.assert_raises_regex(RuntimeError, "A: did not converge"):
+            rtx.converge(unfinished, ["A"], 7, .25, 1, read_pixels=reader)
+        reader.assert_not_called()
+        assert rtx.converge(unfinished, ["A"], 7, .25, 1, capture=False) == ({"A": None}, {"A": (1, False)})
 
 
 def check_codecs():

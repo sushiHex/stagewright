@@ -1,5 +1,11 @@
 # Build plan
 
+**SIMPLIFICATION IS PROGRESS.** Keep a light, direct harness for the NVIDIA core pipeline.
+YAGNI takes precedence over TDD. Review findings are candidates, not an automatic backlog:
+fix concrete failures with small local changes and use only the checks needed to prove them.
+Render manifests, validation orchestration, broad CI/support matrices and material migrations
+are not planned requirements. Expand only for a demonstrated use. See `CLAUDE.md`.
+
 Status as of 2026-10-27 (handoff notes in `docs/handoff.md`; tasks 10 and 11 are complete; task 13 adds a loop shot and prepares sharing):
 
 - **Done:**

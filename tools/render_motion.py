@@ -20,7 +20,6 @@ import render as stills  # noqa: E402
 from project_paths import ROOT, SCENES, MOTION_SETTINGS  # noqa: E402
 
 SCENE = SCENES / "present.usda"
-FRAMES = ROOT / "build" / "frames" / "dolly"
 OUT = ROOT / "build" / "out"
 PRODUCT = "Dolly"
 FPS = MOTION_SETTINGS[PRODUCT]["fps"]
@@ -82,7 +81,6 @@ def render(frames, res, spp, out_dir, max_steps, scene=SCENE, product=PRODUCT,
     fps, count = motion_timing(product, fps, count)
     loop = loop_enabled(product, loop)
     check_frame_directory(scene, product, fps, count, loop, out_dir)
-    import numpy as np
     from image_io import ImageCodec
     from image_compute import RGBDownsampler
 
@@ -99,8 +97,10 @@ def render(frames, res, spp, out_dir, max_steps, scene=SCENE, product=PRODUCT,
     schedule = [(f, None) for f in warm] + [(f, f"{f:04d}.png") for f in frames]
     if loop and frames == list(range(count)):
         schedule += [(f, f"_loop_{f:04d}.png") for f in range(min(2, count))]
-    downsampler = RGBDownsampler(supersample) if supersample > 1 else None
-    read_pixels = None if downsampler is None else (downsampler.capture_cpu if cpu_readback else downsampler.capture)
+    read_pixels = None
+    if supersample > 1:
+        downsampler = RGBDownsampler(supersample)
+        read_pixels = downsampler.capture_cpu if cpu_readback else downsampler.capture
     with rt.open_renderer() as rtx, rt.loaded_scene(rtx, "motion", layer) as loaded, ImageCodec() as codec:
         # Ordinal 1 is the initial load; each scheduled pose gets the next ordinal.
         for ordinal, (f, filename) in enumerate(schedule, start=2):
@@ -111,13 +111,9 @@ def render(frames, res, spp, out_dir, max_steps, scene=SCENE, product=PRODUCT,
                 raise RuntimeError(f"frame {f}: no image captured (last status {status.get(product)})")
             if filename is None:
                 continue
-            px = images[product]
-            progression, converged = status[product]
-            rgb = px[..., :3].astype(np.float32)
-            codec.write_rgb(out_dir / filename, px)
+            codec.write_rgb(out_dir / filename, images[product])
             label = "loop guard" if filename.startswith("_loop_") else "frame"
-            print(f"{label} {f:4d} ordinal {ordinal:4d} progression={progression} converged={converged} "
-                  f"mean={rgb.mean():.1f}", flush=True)
+            print(f"{label} {f} -> {out_dir / filename}", flush=True)
 
 
 def encode(frames_dir, gif_width, gif_fps, make_gif=False, fps=None, count=None,

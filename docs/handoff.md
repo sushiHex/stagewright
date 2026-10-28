@@ -1,9 +1,20 @@
 # Handoff
 
-State of the repo as of 2026-10-27, for the next session picking it up cold. Read `CLAUDE.md` first,
+State of the repo as of 2026-10-28, for the next session picking it up cold. Read `CLAUDE.md` first,
 then `docs/plan.md`, then this file.
 
 ## Where things stand
+
+- Simplification pass: render CLIs now log output paths directly, without diagnostic-only pixel
+  statistics; unused path constants were removed. Focused CPU checks confirm unchanged pixel
+  forwarding, output paths, convergence handling and sample settings. No rendering settings changed.
+
+- The shared renderer now rejects unconverged captures before readback; the focused CPU check
+  covers successful capture, failure and discarded warmups. One disposable material fixture using
+  installed `usdex.rtx.definePbrMaterial` rendered in pinned ovrtx: its red MDL material appeared red
+  while its disconnected universal fallback and the PreviewSurface control were blue. The render
+  converged without reported errors, supporting MDL execution for this fixture only. Probe files
+  remain under ignored `build/probes/mdl/`; production materials and accepted media are unchanged.
 
 - The concise README leads with prompt-based procedural creation and an explicitly scoped NVIDIA
   core pipeline. It includes an original SVG diagram and a linked model technical guide.
@@ -99,6 +110,16 @@ pinned commit `62610544f41a338a8abbbe32e2e902d4107c506d`, LFS skipped, CarHero f
 | `build/private/*.png` | renders containing the blueprint's own car. **Never publish, never commit, never copy into public media** |
 
 ## Next steps, in order
+
+The render-harness increment is tracked in [Issue #1](https://github.com/sushiHex/stagewright/issues/1), under the
+[Lean render harness milestone](https://github.com/sushiHex/stagewright/milestone/1).
+Use linked PRs for changes and close their Issues through the implementation PR merge.
+
+**SIMPLIFICATION IS PROGRESS.** The MVP is established. Keep the project a light, direct harness
+for the NVIDIA core pipeline, with YAGNI over TDD. The adversarial review does not authorize a
+validation framework, render manifests, compliance layers or an expanded test program. The local
+convergence fix and bounded MDL probe are complete. No material migration follows automatically.
+Further infrastructure or integrations need a concrete use; they are not automatic next tasks.
 
 1. The approved public release is `https://github.com/sushiHex/stagewright`, with `main` as the
    release branch. Preserve both accepted movies and existing still hashes. Further optimization

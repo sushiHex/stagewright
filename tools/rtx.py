@@ -76,14 +76,14 @@ def pixels(frame, render_var):
 
 def converge(rtx, products, ordinal, delta_time, max_steps, var="Color", *,
              capture=True, read_pixels=None):
-    """Step `products` at `ordinal` until each one reports converged, or until the last step, and
-    read back the `var` render var of each.
+    """Step products to convergence and read their final render vars.
 
-    Returns (images, status): images maps product -> image array for every product that produced a
-    frame; status maps product -> (progression, converged) of the last frame seen. A product
-    missing from `images` produced no frame at all. With capture=False, values are
-    None instead of images, preserving frame-availability checks without mapping pixels.
-    read_pixels optionally replaces the default host-copy reader."""
+    Return (images, status), keyed by product. Status holds the last (progression,
+    converged) pair; products that never produce a frame have no image entry.
+    Captures must converge before readback. Discarded warmups (capture=False) may
+    reach the step limit and return None markers without mapping pixels.
+    read_pixels optionally replaces the default host-copy reader.
+    """
     reader = pixels if read_pixels is None else read_pixels
     waiting = set(products)
     images, status = {}, {}
@@ -95,9 +95,12 @@ def converge(rtx, products, ordinal, delta_time, max_steps, var="Color", *,
             if fr is None:
                 continue
             status[product] = (fr.progression, fr.converged)
-            if fr.converged or final:
-                images[product] = reader(fr, f"{product}/{var}") if capture else None
-                waiting.discard(product)
+            if not fr.converged and not final:
+                continue
+            if capture and not fr.converged:
+                raise RuntimeError(f"{product}: did not converge within {max_steps} steps")
+            images[product] = reader(fr, f"{product}/{var}") if capture else None
+            waiting.discard(product)
         del result
         if not waiting:
             break

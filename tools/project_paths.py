@@ -3,10 +3,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 MODEL = ROOT / "models" / "wind_tunnel"
-ASSETS = MODEL / "assets"
 SCENES = MODEL / "scenes"
-DOCS = MODEL / "docs"
-MEDIA = MODEL / "media"
 
 # Output cadence belongs to each authored motion, shared by builder and renderer.
 MOTION_SETTINGS = {
