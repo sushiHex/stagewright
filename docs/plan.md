@@ -252,6 +252,15 @@ parametric Python through usdex, which an agent can regenerate deterministically
     contents after push. Public visibility, MIT detection, exact remote-tree parity and the initial
     release commit `29a3c89` were verified. Further optimization remains separate from this release.
 
+19. **README landing page: DONE 2026-10-27.** Lead with prompt-based procedural environments
+    and an explicitly scoped NVIDIA core scene pipeline. Use the accepted hero and films plus an
+    original SVG pipeline visual. Keep the root README concise and preserve integration, validation,
+    render options and provenance in `models/wind_tunnel/docs/guide.md`. Centralize the unchanged
+    dependency pins in `requirements.txt`; keep the offline share packages complete. Editorial and
+    technical reviews, local link/anchor checks, offline archive checks, media hashes, SVG structure
+    and desktop/narrow previews passed. The owner authorized publication. Accepted media and scene
+    data are unchanged.
+
 **Gate:** if task 6 has no presentable still five hours into the build, ship stills only.
 
 ## Gsplat option

@@ -1,0 +1,372 @@
+# Wind tunnel: technical guide
+
+[Back to stagewright](../../../README.md)
+
+Setup, integration, validation boundaries and render controls for the first environment.
+Run shell commands from the repository root. This is a conceptual presentation environment;
+it has not been run inside the external blueprint application.
+
+## What was verified
+
+`tools/fit_check.py` composes the blueprint's own stage with the override and measures it. The full
+report, with every source value cited by file and line, is [models/wind_tunnel/docs/fit-check.md](fit-check.md).
+In summary:
+
+- **Override composition.** The override sublayers the blueprint's `Main.usda` and replaces the
+  payload on `/World/WindTunnel` with an explicit list-op. The composed payload list is only this
+  environment; the original `windTunnelEnv` layer is not used once the stage is loaded.
+  `/World/WindTunnel` stays at identity, and the override introduces no composition errors
+  attributable to this environment, and no unresolved asset paths under `/World/WindTunnel`. The
+  composed stage does carry the blueprint's own unresolved assets, which this check reports but
+  cannot fix: one composition error (the `/World/CarCFD` PLY payload, an LFS object that was not
+  fetched) and 20 asset paths owned by `/World/CAE` and `/World/CarHero` (renderer search paths,
+  remote content and unfetched textures).
+- **Units.** Both the override and the environment are Z-up, centimetres (metersPerUnit 0.01), 60
+  time codes per second, matching the blueprint.
+- **Domain containment.** The CFD domain, recomputed from the blueprint source, is X -144..144,
+  Y -650..430, Z -4..248 cm. No environment geometry enters it apart from floor inserts below
+  Z 0.5 cm (the domain floor sits 4 cm below the floor top, which is the blueprint's own
+  convention). The domain sits inside the jet: the nozzle mesh's most downstream point (its rolled
+  lip) is 332.5 cm upstream of the domain's inlet face, and the collector mesh's most upstream point
+  is 450.0 cm downstream of its outlet face. The cross-section clearances, 181.0 cm at the nozzle
+  and 256.0 cm at the collector, are the smallest distances from any vertex of that mesh to the
+  domain's X-Z rectangle (vertex-based, so the rounded corners are measured at their chords).
+- **Hero car fit.** With the blueprint's hero car geometry fetched, the car sits inside the domain
+  and on the turntable (farthest point 257.6 cm from the centre of a 500 cm radius), the turntable
+  is centred on its mid-wheelbase, the centre belt runs between the wheels for the car's full
+  length, and each tyre's contact patch lies on one of the four wheel-drive belts.
+- **Camera clearances.** All eight blueprint cameras stay out of solid environment geometry, out of
+  the nozzle and collector openings, and inside the hall. These are tested at each camera's
+  authored time samples (2361 positions in all); the paths between samples are not swept. The
+  smallest exact distance from any sample to the nozzle surface is 99.9 cm (`Camera_ANIM3`). A
+  stricter, plane-based figure: of the samples within the nozzle's width and height, the closest
+  comes 35.2 cm, measured along Y only, to the plane of the nozzle lip (`Camera_ANIM3`). The nozzle
+  exit was moved upstream to Y +775 to keep that figure above 30 cm.
+- **Lights.** The environment brings its own 30 lights, and nothing else in the composed stage
+  contributes any, as the blueprint expects of its environment.
+- **No scanned blueprint source addresses the old environment.** A text search of the blueprint's
+  117 `.py`, `.kit`, `.toml`, `.json`, `.js`, `.ts` and `.usda` files for the old environment's prim
+  and asset names finds only the `/World/WindTunnel` definition and its payload arc in `Base.usda`,
+  which the override replaces. Its scope: binary `.usd`/`.usdc` layers and other file types were not
+  searched, LFS pointers and files over 8 MB would have been skipped (none were), and the original
+  environment (`windTunnelEnv.usd`, an LFS object) was not fetched, so its contents were not
+  inspected. A lookup assembled at run time would not be found by a text search.
+- **Renders.** The blueprint's own stage with the override applied loads and renders in ovrtx from
+  its `CameraMAIN_00`. That render shows the blueprint's car, so it was kept private and is not
+  published. The images here come from this repo's presentation scene, with the Ahmed body in place
+  of the blueprint's car. Its copy of `CameraMAIN_00` matches the blueprint camera's pose and lens
+  (position, rotation, focal length, apertures) but not its exposure or clipping: the blueprint
+  camera sets an exposure responsivity of 1.103 and a far clipping distance of 10,000,000 cm, while
+  the copy carries no exposure attributes (so the renderer defaults apply) and clips at 100,000 cm.
+- **Dolly path.** `tools/build_present.py` refuses a dolly camera path that comes within 30 cm of
+  any environment or prop bounding box; the current path's closest approach is 44.9 cm, to the
+  floor at its low start. `tools/check_presentation.py` also checks every authored pose for
+  body framing, camera aim, world-up orientation and travel from behind the tail to past the nose.
+  These checks do not test occlusion. `Orbit360` follows a closed spline with changing distance,
+  height and aim, and a matching authored closure pose. Its video omits the duplicate endpoint;
+  a conservative bound also checks clearance between its linearly interpolated camera positions.
+
+**Not verified:**
+
+- Running inside the blueprint application (Kit, the inference service, the streamer). Nothing here
+  launches it.
+- The inference geometry (`/World/CarCFD`) placement, which needs a PLY plugin that Kit supplies.
+- Occlusion in camera views; the "in view" tests are frustum against bounding box only.
+- Swept clearance for the Dolly between authored samples. Orbit360 has a conservative
+  between-sample camera-position clearance bound; its framing checks remain sampled.
+- Renders from the blueprint cameras other than `CameraMAIN_00`.
+
+## Additional views
+
+| | |
+|---|---|
+| ![Blueprint camera view with the flow domain outlined](../media/main.jpg) | ![Nozzle flange and supports](../media/detail.jpg) |
+| From a copy of the blueprint's `CameraMAIN_00` (same pose and lens), with the blueprint's CFD flow domain drawn as a wire box | Detail: nozzle flange, seams and A-frame supports |
+| ![Wake-side view toward the collector](../media/wake.jpg) | ![Lighting QC spheres beside the model](../media/qc_main.jpg) |
+| Beside the model, looking downstream at the collector | Lighting QC: 18% grey, chrome and clear-coated paint spheres |
+
+## Simplifications
+
+This is a presentation environment, and several physical parts are stand-ins:
+
+- **Materials remain procedural UsdPreviewSurface.** Texture and mesh computation runs in Warp.
+  Spectral noise uses Warp's seeded generator, so noise patterns differ from earlier builds while
+  keeping their periodic spectrum. SimReady material assets have not been downloaded; dataset terms
+  and renderer support must be checked before using them.
+- **Fine patterns can alias in motion.** The dolly defaults to rendering at twice the output
+  dimensions, then uses a Warp triangle prefilter and downsample before PNG/MP4 output.
+  `--supersample 1` retains native sampling. This is a sampling aid; shimmer is not claimed to be
+  eliminated for every view or playback size.
+- **Flow conditioning is surface-deep.** The honeycomb and the collector's safety screen are
+  textured surfaces with solid backing, a render shortcut. They are not flow-through geometry.
+- **No ducting beyond the test section.** Nothing upstream of the settling chamber (fan, corners,
+  return circuit) or downstream of the collector's diffuser is modelled.
+- **Ground simulation is static geometry.** The five-belt layout (a centre belt between the wheels
+  plus four wheel-drive belts under the tyres, fixed at the blueprint car's track and wheelbase)
+  shows where the belts would be. There is no model restraint or balance system, no
+  boundary-layer suction or scoop ahead of the belts, and nothing moves.
+- **The Ahmed body is an Ahmed-style presentation prop.** It is scaled 4.3 times, to about
+  4.49 x 1.67 x 1.24 m, with stilt positions chosen for the presentation. It is not a
+  benchmark-equivalent model.
+- **No aerodynamic link to the blueprint.** The environment has no relationship to the blueprint's
+  inference. Its inputs are the car configuration and speed (velocity, spoiler, rims and mirrors in
+  the blueprint's `workflow.toml`), so the nozzle, collector and floor here do not affect the flow
+  it shows, and the flow it shows is not that of this test section.
+
+## Using the override
+
+Clone the blueprint into `external/blueprint` without its large LFS content, then check out the
+commit this repository was checked against.
+
+PowerShell:
+
+```
+$env:GIT_LFS_SKIP_SMUDGE=1; git clone https://github.com/NVIDIA-Omniverse-blueprints/digital-twins-for-fluid-simulation.git external/blueprint
+git -C external/blueprint checkout 62610544f41a338a8abbbe32e2e902d4107c506d
+```
+
+bash:
+
+```
+GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/NVIDIA-Omniverse-blueprints/digital-twins-for-fluid-simulation.git external/blueprint
+GIT_LFS_SKIP_SMUDGE=1 git -C external/blueprint checkout 62610544f41a338a8abbbe32e2e902d4107c506d
+```
+
+In PowerShell the variable stays set for the rest of the session, so the checkout skips LFS
+content too.
+
+The hero car is not needed for the override itself. For the car checks in the fit report, fetch
+only that object. This needs [Git LFS](https://git-lfs.com) installed and set up once with
+`git lfs install`:
+
+```
+git -C external/blueprint lfs pull --include="source/specializations/auto-aero/stages/layers/CarHero/**"
+```
+
+The override is [models/wind_tunnel/scenes/blueprint_override.usda](../scenes/blueprint_override.usda). Its whole content,
+apart from metadata, is:
+
+```usda
+#usda 1.0
+(
+    defaultPrim = "World"
+    metersPerUnit = 0.01
+    subLayers = [
+        @../../../external/blueprint/source/specializations/auto-aero/stages/Main.usda@
+    ]
+    timeCodesPerSecond = 60
+    upAxis = "Z"
+)
+
+over "World"
+{
+    over "WindTunnel" (
+        payload = [@../assets/test_section.usda@</Environment>]
+    )
+    {
+    }
+}
+```
+
+The payload is an explicit list-op on purpose: `prepend` would add this environment in front of the
+blueprint's and keep the original one loading alongside it. The payload targets `/Environment`, the root of `models/wind_tunnel/assets/test_section.usda`, which has an identity
+transform and carries the environment's lights.
+
+Expected layout:
+
+```
+stagewright/
+  models/wind_tunnel/assets/test_section.usda
+  models/wind_tunnel/scenes/blueprint_override.usda
+  external/blueprint/            (clone, not tracked)
+```
+
+### Using it in the blueprint application
+
+This was not exercised here. The override only takes effect if the application opens it, and the
+application names its stage in two places in the blueprint source:
+
+- the workflow manifest,
+  `external/blueprint/source/specializations/auto-aero/workflow/workflow.toml`, line 20:
+  `default_stage = "${app}/../rtwt/stages/Main.usda"` under `[workflow]`;
+- the Kit app settings, `exts."omni.cae.startup".usdFile = "${app}/../rtwt/stages/Main.usda"`, in
+  `apps/omni.rtwt.webrtc.kit` (line 53) and `apps/omni.rtwt.editor.kit` (line 92) under the same
+  `auto-aero` directory.
+
+Using the environment in the application therefore means either pointing those at the override
+root (whose relative paths assume it stays at `models/wind_tunnel/scenes/` in this
+repository, with the blueprint clone at `external/blueprint`), or copying the override's explicit payload opinion on `/World/WindTunnel`
+into a root layer the application already opens. Neither was tried.
+
+## Toolchain
+
+| Step | Tool |
+|---|---|
+| Authoring geometry, materials, lights, cameras | [OpenUSD Exchange SDK](https://github.com/NVIDIA-Omniverse/usd-exchange) (`usd-exchange` 3.0.1, `usdex.core`) and the OpenUSD it bundles |
+| Validation | NVIDIA USD validator (`usd-validation-nvidia` 1.22.0, `nvidia_usd_validate`) |
+| Rendering | `ovrtx` 0.6.0 and `ovstage` 0.3.0, headless RTX path tracing |
+| Procedural textures and mesh computation | NVIDIA Warp (`warp-lang` 1.18.0): spectral noise, material maps, profiles, lofts, sweeps, normals and UVs |
+| Motion image sampling | NVIDIA Warp triangle prefilter and downsample |
+| PNG and JPEG | NVIDIA nvImageCodec (`nvidia-nvimgcodec-cu12` 0.9.0.20) |
+| MP4 | NVIDIA PyNvVideoCodec 2.2.3 (NVENC encode and MP4 mux) |
+| Optional GIF fallback (`--gif`) | ffmpeg, with a generated palette |
+
+Every stage is NVIDIA: authoring, procedural computation, validation, rendering, image writes and
+MP4 encoding use the tools above. Python orchestrates the build; numpy carries arrays between Warp,
+OpenUSD and the renderer, packs indexed USD data, and supports diagnostic checks. PyNvVideoCodec's
+muxer uses libav internally. Only the optional GIF fallback requires the ffmpeg executable.
+
+Each model keeps its assets, scenes, documentation and public media together under `models/`.
+The current builders and fit check target `wind_tunnel`; shared rendering and codec helpers stay in
+`tools/`. Ignored build outputs and the external blueprint clone remain at repository level.
+
+Geometry is parametric Python: every dimension sits in one config block at the top of
+`tools/build_env.py`, so the environment can be regenerated deterministically. Do not install
+`usd-core` into the same environment; `usd-exchange` ships its own OpenUSD and conflicts with it.
+
+The environment asset passes every validator rule except the one asking for large arrays to be
+stored as binary crate files, which cannot pass while the assets stay human-readable USDA. The
+presentation scenes fail the same rule (for large arrays and for the dolly camera's time samples)
+and carry one warning, because their `/Render` scope sits beside the default prim `/World`.
+
+### Build it
+
+Windows, Python 3.13, with [uv](https://github.com/astral-sh/uv) and an NVIDIA GPU:
+
+```
+git clone https://github.com/sushiHex/stagewright.git
+cd stagewright
+uv venv --python 3.13 .venv
+uv pip install --python .venv/Scripts/python.exe "ovrtx==0.6.0.1791947691" "ovstage==0.3.0.1791986420" "usd-exchange==3.0.1" "usd-validation-nvidia==1.22.0" "numpy==2.5.4"
+uv pip install --python .venv/Scripts/python.exe "pynvvideocodec==2.2.3" "nvidia-nvimgcodec-cu12[all]==0.9.0.20" "warp-lang==1.18.0"
+
+.venv/Scripts/python.exe tools/build_env.py            # models/wind_tunnel/assets/test_section.usda and models/wind_tunnel/assets/textures/
+.venv/Scripts/nvidia_usd_validate.exe models/wind_tunnel/assets/test_section.usda
+.venv/Scripts/python.exe tools/build_present.py        # models/wind_tunnel/scenes/present.usda, models/wind_tunnel/scenes/present_payload.usda
+.venv/Scripts/python.exe tools/check_presentation.py  # authored motion, framing and clearances
+.venv/Scripts/python.exe tools/fit_check.py --strict   # models/wind_tunnel/docs/fit-check.md (needs external/blueprint)
+.venv/Scripts/python.exe tools/render.py --res 1920x1080 --spp 256 --prefix final_
+.venv/Scripts/python.exe tools/render.py --products Main --qc --res 1920x1080 --spp 256 --prefix final_qc_
+.venv/Scripts/python.exe tools/render_motion.py --res 1280x720 --spp 64 --supersample 2 --encode
+.venv/Scripts/python.exe tools/render_motion.py --product Orbit360 --res 1280x720 --spp 64 --supersample 2 --encode
+.venv/Scripts/python.exe tools/check_loop.py           # container, repeat-pose and decoded seam checks
+.venv/Scripts/python.exe tools/build_media.py          # approved presentation outputs to models/wind_tunnel/media/
+```
+
+Authoring (`pxr`) and rendering (`ovrtx`) always run in separate processes, because ovrtx carries
+its own USD runtime. Stills land in `build/stills/`, frames in `build/frames/dolly/`, and the MP4
+in `build/out/`. To encode an existing complete sequence, use `tools/render_motion.py --no-render --encode`. Add `--gif` only to request the optional GIF; that flag requires ffmpeg on the path.
+`tools/build_media.py` copies only fixed presentation output paths into `models/wind_tunnel/media/`, never `build/private/`.
+
+`Orbit360` is a wide dolly/crane tour through the environment. Its closed cubic B-spline
+changes distance, height and aim: a low wake-side approach, a rising sweep past the nozzle,
+a collector establishing view and an opposite-side return. It makes one full turn with
+continuous position, velocity and acceleration through the wrap, without an endpoint pause.
+Camera checks keep the body framed with environment context and check the complete nozzle
+and collector face in their establishing views.
+
+`Orbit360` defaults to its authored full-cycle frame count and cadence. Its renderer warms up
+around the orbit, approaches the start in playback order, and records two post-cycle repeat-pose
+images outside the numeric frame sequence. `tools/check_loop.py` checks those images for startup
+brightness changes and verifies source and decoded images around the loop boundary. Enable repeat
+in an MP4 player; the local review page does this automatically.
+
+Motion rendering skips pixel capture for discarded warmup poses while preserving their seek and
+convergence schedule. Supersampling filters the mapped CUDA image before copying RGB to the host;
+`--cpu-readback` retains the explicit CPU-copy reference path. Sequence-owned image codecs and
+filter buffers are reused. The filter, sample count and encoder quality settings are unchanged.
+Same-frame CUDA and CPU-reference captures matched exactly in verification.
+
+Still and motion rendering also use the documented RTX sample-batching setting.
+`--sample-batch` limits samples per kernel launch; the selected batch divides the explicit
+`--spp` budget, so the total sample count is unchanged. `--sample-batch 1` retains the reference
+launch schedule. With stills `--spp 0`, authored sample and batch settings are retained.
+The renderer's progression counter reports iterations; convergence still uses the sample budget.
+Batched captures were checked against reference views and repeat-pose stability.
+
+For another scene, motion rendering accepts `--scene`, `--product`, `--count` and `--fps`.
+`--res` sets the final output dimensions; `--supersample 2` applies the motion filter and
+`--supersample 1` uses native sampling. Supply a separate `--out` frame directory for custom scenes. Custom sequences write their video
+alongside those frames; only complete built-in sequences write their canonical `build/out/` videos, the sources
+used by `tools/build_media.py`. `Dolly` and `Orbit360` keep separate frame and video paths.
+
+Run `.venv/Scripts/python.exe tools/check_compute.py` for numerical and codec regression checks.
+It checks the spectral noise against an independent Fourier reference, mesh geometry, filtered
+downsampling, buffer ownership, warmup capture policy, lossless PNG, JPEG, MP4 color/frame order and separation of custom/private outputs. Its fixtures stay under `build/checks/`.
+
+`tools/fit_check.py` exits non-zero if any check fails. With `--strict` it also fails when a check
+could not run, such as the car checks when the CarHero LFS content has not been fetched.
+`tools/render.py` exits non-zero if any requested camera produced no frame.
+
+## Local sharing package
+
+After rendering, checking the loop and refreshing public media, run:
+
+```
+.venv/Scripts/python.exe tools/build_share.py
+```
+
+It prepares `build/share/stagewright-review.zip` and `build/share/stagewright-source.zip` locally.
+Open `index.html` from either extracted archive for the hero image, accepted dolly, looping orbit,
+README, fit report and licence. The review archive is a compact media-and-notes package; the source
+archive also includes this repository's code and procedural assets for rebuilding. Dependencies,
+blueprint content, private renders and other build outputs are excluded. Checksums are included.
+Nothing is uploaded or published by these commands.
+
+## Repository layout
+
+```
+models/wind_tunnel/assets/test_section.usda     the environment payload (root prim /Environment)
+models/wind_tunnel/assets/textures/             procedural textures, generated by tools/build_env.py
+models/wind_tunnel/scenes/blueprint_override.usda   the drop-in override for the blueprint stage
+models/wind_tunnel/scenes/present.usda          presentation root: environment by reference, plus the Ahmed body,
+                             QC spheres, cameras (including Dolly and Orbit360) and RenderProducts
+models/wind_tunnel/scenes/present_payload.usda  the same, with the environment loaded as a payload
+tools/build_env.py           builds the environment and its textures
+tools/build_present.py       builds the presentation roots and checks the dolly path clearance
+tools/project_paths.py       repository and default-model locations
+tools/meshlib.py             mesh assembly (lofts, sweeps, rounded sections)
+tools/mesh_compute.py        Warp mesh kernels
+tools/texture_compute.py     Warp spectral noise and material-map kernels
+tools/image_io.py            nvImageCodec PNG/JPEG IO
+tools/image_compute.py       Warp image prefilter and downsample
+tools/video_io.py            PyNvVideoCodec NVENC encode and MP4 mux
+tools/video_pixels.py        Warp RGB-to-NV12 conversion
+tools/build_media.py         fixed presentation output paths to models/wind_tunnel/media/
+tools/check_compute.py       numerical, sampling, codec and output-routing checks
+tools/check_presentation.py  authored motion framing, timing, travel, closure and clearances
+tools/check_loop.py          rendered and decoded loop seam checks
+tools/build_share.py         verified local review/source archives
+tools/fit_check.py           the fit check, writes models/wind_tunnel/docs/fit-check.md
+tools/render.py              stills
+tools/render_motion.py       motion sequences, MP4 and optional GIF
+tools/smoke.py               renderer smoke test
+tools/rtx.py                 shared ovrtx session, stepping and readback helpers for the three above
+docs/                        project plan and handoff
+models/wind_tunnel/docs/      model fit-check report, assets and references
+models/wind_tunnel/media/     presentation images and video used by this README
+```
+
+## The Ahmed body
+
+The model on the turntable is an Ahmed-style presentation prop, modelled on the Ahmed body, the
+standard bluff-body reference shape from
+S. R. Ahmed, G. Ramm and G. Faltin, "Some Salient Features of the Time-Averaged Ground Vehicle
+Wake", SAE Technical Paper 840300 (1984). It is built from published dimensions (1044 x 389 x 288 mm,
+25 degree rear slant) as restated by the ERCOFTAC knowledge base and COMSOL's model of the same body,
+not from a downloaded model. The stilt positions are chosen for the presentation, and one dimension
+(whether the 222 mm slant length runs along the slant or along the axis) is not settled by those
+sources. It is shown at 4.3 times model scale (about 4.49 x 1.67 x 1.24 m) so it reads at car size,
+which makes it a prop rather than a benchmark-equivalent model. See
+[models/wind_tunnel/docs/assets.md](assets.md) for the details. It is a presentation prop only and is not part of
+the environment payload.
+
+## Licences
+
+- **This repository's code and generated content:** [MIT](../../../LICENSE).
+- **Textures:** all procedural, computed in Warp by `tools/build_env.py` and written through nvImageCodec. No
+  third-party textures, HDRIs or models are used.
+- **The blueprint** (`digital-twins-for-fluid-simulation`) is under the NVIDIA Omniverse License
+  Agreement, and **ovrtx** and **ovstage** are under the NVIDIA Software License Agreement. None of
+  them is redistributed here: the blueprint is cloned locally into the untracked `external/`, and the
+  renderer packages are installed from their package index.

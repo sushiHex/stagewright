@@ -1,0 +1,8 @@
+ovrtx==0.6.0.1791947691
+ovstage==0.3.0.1791986420
+usd-exchange==3.0.1
+usd-validation-nvidia==1.22.0
+numpy==2.5.4
+pynvvideocodec==2.2.3
+nvidia-nvimgcodec-cu12[all]==0.9.0.20
+warp-lang==1.18.0

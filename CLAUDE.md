@@ -15,7 +15,10 @@ The target (2026-10-26) is a 100% NVIDIA pipeline: OpenUSD Exchange SDK, ovrtx/o
 validator, the blueprint's own stage contract, Warp for computation, nvImageCodec for PNG/JPEG,
 PyNvVideoCodec (NVENC) for MP4. The migration is task 10 in `docs/plan.md`. The only sanctioned
 non-NVIDIA step is the optional GIF fallback (ffmpeg, behind a flag). Python, uv and numpy-as-container
-stay; never claim "no numpy" or "100%" in the README, claim "every stage is NVIDIA".
+stay. The README may emphasize a "100% NVIDIA core scene pipeline" when its scope is explicit:
+authoring APIs, computation, validation, RTX rendering and PNG/JPEG/MP4 output. Keep Python, uv,
+NumPy, the prompt-to-code agent and optional FFmpeg GIF outside that claim. Never imply that
+all software dependencies or the coding agent are NVIDIA products, or claim "no numpy".
 
 ## Hard rules
 
@@ -50,10 +53,11 @@ stay; never claim "no numpy" or "100%" in the README, claim "every stage is NVID
 
 ## Environment
 
+`requirements.txt` is the pinned dependency list. Keep its versions aligned with the technical guide.
+
 ```
 uv venv --python 3.13 .venv
-uv pip install --python .venv/Scripts/python.exe "ovrtx==0.6.0.1791947691" "ovstage==0.3.0.1791986420" "usd-exchange==3.0.1" "usd-validation-nvidia==1.22.0" "numpy==2.5.4"
-uv pip install --python .venv/Scripts/python.exe "pynvvideocodec==2.2.3" "nvidia-nvimgcodec-cu12[all]==0.9.0.20" "warp-lang==1.18.0"
+uv pip install --python .venv/Scripts/python.exe -r requirements.txt
 .venv/Scripts/python.exe tools/smoke.py make
 .venv/Scripts/python.exe tools/smoke.py render
 ```

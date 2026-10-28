@@ -5,6 +5,12 @@ then `docs/plan.md`, then this file.
 
 ## Where things stand
 
+- The concise README leads with prompt-based procedural creation and an explicitly scoped NVIDIA
+  core pipeline. It includes an original SVG diagram and a linked model technical guide.
+  `requirements.txt` centralizes the unchanged dependency pins. Link, package, media-hash and
+  Python em-dash checks passed; desktop and narrow layouts were inspected. The owner authorized
+  publishing this revision. Accepted media remain unchanged.
+
 - Public repository: [stagewright](https://github.com/sushiHex/stagewright), branch `main`.
   Initial public release commit: `29a3c89`. Public visibility, MIT detection and exact remote-tree
   parity were verified. Protected outputs and dependencies are excluded from the full history.
@@ -76,7 +82,8 @@ then `docs/plan.md`, then this file.
 .venv/Scripts/python.exe tools/check_compute.py
 ```
 
-`fit_check.py` and the blueprint render need `external/blueprint` (clone instructions in README.md,
+`fit_check.py` and the blueprint render need `external/blueprint` (clone instructions in
+`models/wind_tunnel/docs/guide.md`,
 pinned commit `62610544f41a338a8abbbe32e2e902d4107c506d`, LFS skipped, CarHero fetched separately).
 
 ## Outputs
@@ -126,7 +133,8 @@ sublayer path was updated without rendering or copying its images.
   monotonic timestamps. Its muxer is libav-based. No ffmpeg executable is needed for MP4.
 - Warp's seeded noise generator changes the noise patterns while preserving periodic spectra.
   The saved previous assets and scenes are in gitignored `build/baseline/` for local comparisons.
-- README and CLAUDE.md install pins match. Public docs contain no render durations or other
+- README and CLAUDE.md use `requirements.txt`; the technical guide records the same install pins.
+  Public docs contain no render durations or other
   performance figures. Python text checks found no em dashes.
 
 ## Known weaknesses (presentation)

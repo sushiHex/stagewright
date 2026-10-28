@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="380" viewBox="0 0 1200 380" role="img" aria-labelledby="title desc">
+  <title id="title">From a prompt to a procedural NVIDIA scene pipeline</title>
+  <desc id="desc">A prompt guides a coding agent to create editable Python generators. NVIDIA OpenUSD Exchange SDK and Warp build the scene, the NVIDIA USD validator checks it, ovrtx and ovstage render with RTX PathTracing, and nvImageCodec and PyNvVideoCodec deliver images and NVENC video. Python, uv and NumPy support the workflow. FFmpeg is only an optional GIF fallback.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M1 1L6 4L1 7" fill="none" stroke="#76b900" stroke-width="1.6"/></marker>
+  </defs>
+  <rect width="1200" height="380" rx="18" fill="#11161c"/>
+  <g font-family="Segoe UI, Arial, sans-serif">
+    <text x="36" y="43" fill="#f4f7fa" font-size="24" font-weight="700">Describe it. Build it. Regenerate it.</text>
+    <text x="1164" y="42" text-anchor="end" fill="#98a7b5" font-size="17" letter-spacing="1.2">stagewright</text>
+    <rect x="36" y="64" width="260" height="58" rx="9" fill="#202a34"/>
+    <text x="56" y="100" fill="#f4f7fa" font-size="20" font-weight="600">Environment prompt</text>
+    <path d="M310 93H382" fill="none" stroke="#76b900" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="399" y="86" fill="#f4f7fa" font-size="20" font-weight="600">Coding agent + editable Python generators</text>
+    <text x="399" y="111" fill="#aab7c3" font-size="16">The prompt shapes the source. The source rebuilds the scene.</text>
+    <rect x="24" y="144" width="1152" height="179" rx="12" fill="#151e20" stroke="#76b900" stroke-width="1.4"/>
+    <text x="43" y="173" fill="#a5db48" font-size="18" font-weight="700" letter-spacing=".6">100% NVIDIA</text>
+    <text x="192" y="173" fill="#dce5e8" font-size="18">CORE SCENE PIPELINE</text>
+    <g fill="#1d282e" stroke="#35434b">
+      <rect x="42" y="191" width="255" height="111" rx="9"/>
+      <rect x="328" y="191" width="255" height="111" rx="9"/>
+      <rect x="614" y="191" width="255" height="111" rx="9"/>
+      <rect x="900" y="191" width="255" height="111" rx="9"/>
+    </g>
+    <g fill="none" stroke="#76b900" stroke-width="2" marker-end="url(#arrow)">
+      <path d="M302 246H320"/><path d="M588 246H606"/><path d="M874 246H892"/>
+    </g>
+    <g fill="#a5db48" font-size="15" font-weight="700" letter-spacing="1.6">
+      <text x="59" y="216">01  BUILD</text><text x="345" y="216">02  CHECK</text>
+      <text x="631" y="216">03  RENDER</text><text x="917" y="216">04  DELIVER</text>
+    </g>
+    <g fill="#f4f7fa" font-size="20" font-weight="600">
+      <text x="59" y="249">OpenUSD Exchange SDK</text><text x="345" y="249">NVIDIA USD validator</text>
+      <text x="631" y="249">ovrtx / ovstage</text><text x="917" y="249">nvImageCodec</text>
+    </g>
+    <g fill="#b6c4ce" font-size="17">
+      <text x="59" y="280">Warp: meshes + textures</text><text x="345" y="280">Stage and asset validation</text>
+      <text x="631" y="280">PathTracing + Warp filtering</text><text x="917" y="280">PyNvVideoCodec / NVENC</text>
+    </g>
+    <text x="36" y="353" fill="#aab7c3" font-size="16">Supporting infrastructure: Python, uv, NumPy</text>
+    <text x="1164" y="353" text-anchor="end" fill="#aab7c3" font-size="16">Optional GIF fallback: FFmpeg</text>
+  </g>
+</svg>

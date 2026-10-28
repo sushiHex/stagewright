@@ -9,8 +9,9 @@ from project_paths import ROOT, MODEL, MOTION_SETTINGS
 OUT = ROOT / "build" / "share"
 MEDIA = [MODEL / "media" / f"{name}.jpg" for name in ("hero", "detail", "main", "wake", "qc_main")]
 MEDIA += [MODEL / "media" / f"{name.lower()}.mp4" for name in MOTION_SETTINGS]
-MODEL_DOCS = [MODEL / "docs" / name for name in ("assets.md", "fit-check.md")]
+MODEL_DOCS = [MODEL / "docs" / name for name in ("assets.md", "fit-check.md", "guide.md")]
 OVERRIDE = MODEL / "scenes" / "blueprint_override.usda"
+README_VISUAL = ROOT / "docs" / "assets" / "nvidia-pipeline.svg"
 
 INDEX = """<!doctype html>
 <html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -109,11 +110,11 @@ def main():
     if not (ROOT / "LICENSE").read_text().startswith("MIT License\n"):
         raise RuntimeError("Expected the selected MIT licence")
     OUT.mkdir(parents=True, exist_ok=True)
-    review = [ROOT / "LICENSE", ROOT / "README.md", *MEDIA, *MODEL_DOCS, OVERRIDE]
+    review = [ROOT / "LICENSE", ROOT / "README.md", README_VISUAL, *MEDIA, *MODEL_DOCS, OVERRIDE]
     texture_names = ("belt", "concrete", "epoxy", "honeycomb", "perf", "turntable")
     textures = [MODEL / "assets" / "textures" / f"{name}_{kind}.png"
                 for name in texture_names for kind in ("color", "normal", "orm")]
-    sources = [*review, ROOT / "CLAUDE.md", ROOT / ".gitignore", ROOT / ".gitattributes",
+    sources = [*review, ROOT / "CLAUDE.md", ROOT / "requirements.txt", ROOT / ".gitignore", ROOT / ".gitattributes",
                *(ROOT / "docs").glob("*.md"), *(ROOT / "tools").glob("*.py"),
                MODEL / "assets" / "test_section.usda", *textures,
                MODEL / "scenes" / "present.usda", MODEL / "scenes" / "present_payload.usda"]
