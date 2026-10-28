@@ -8,7 +8,13 @@ The prompt shapes the code; the code regenerates the world.
 
 ![RTX render of the procedural wind tunnel, with its nozzle, honeycomb and reference body](models/wind_tunnel/media/hero.jpg)
 
-**Films:** [Dolly pass](models/wind_tunnel/media/dolly.mp4) · [Seamless 360 tour](models/wind_tunnel/media/orbit360.mp4)
+**Dolly pass**
+
+https://github.com/user-attachments/assets/5ee76545-875d-4a86-9d19-78b304cbc082
+
+**Seamless 360 tour**
+
+https://github.com/user-attachments/assets/bacc0ef1-b90b-4d65-8be2-4a333056c435
 
 [Quickstart](#quickstart) · [Technical guide](models/wind_tunnel/docs/guide.md)
 
@@ -19,6 +25,15 @@ The prompt shapes the code; the code regenerates the world.
 
 The first model builds that wind-tunnel environment from source. An Ahmed-style reference body
 is added only in the presentation layer.
+
+## Additional views
+
+| | |
+|---|---|
+| ![Blueprint camera view with the flow domain outlined](models/wind_tunnel/media/main.jpg) | ![Nozzle flange and supports](models/wind_tunnel/media/detail.jpg) |
+| Blueprint camera pose and lens, with the CFD flow domain outlined | Nozzle flange, seams and A-frame supports |
+| ![Wake-side view toward the collector](models/wind_tunnel/media/wake.jpg) | ![Lighting QC spheres beside the model](models/wind_tunnel/media/qc_main.jpg) |
+| Beside the model, looking downstream at the collector | Lighting QC: 18% grey, chrome and clear-coated paint spheres |
 
 ## 100% NVIDIA across the core scene pipeline
 
