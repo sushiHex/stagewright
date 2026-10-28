@@ -9,6 +9,34 @@ headless with NVIDIA RTX (`ovrtx`). It is built to drop into the environment slo
 real-time wind tunnel blueprint (`NVIDIA-Omniverse-blueprints/digital-twins-for-fluid-simulation`)
 through one override layer. The plan and task list are in `docs/plan.md`. Read it before starting work.
 
+## Design principle
+
+**SIMPLIFICATION IS PROGRESS.**
+
+Keep Stagewright a light, direct harness for a 100% NVIDIA core scene pipeline. Enforce YAGNI
+over TDD: implement the current need with the smallest clear change, then prove the behavior that
+matters. Tests serve the implementation; they do not drive speculative architecture.
+
+- Prefer direct SDK calls, simple functions and the existing CLI tools.
+- Add an abstraction, dependency or option only when a concrete use requires it.
+- Fix observed failures at their source. Prefer a local guard over a new validation system.
+- Verify changed behavior with a focused probe, smoke run or visual inspection. Add a regression
+  check only when it protects a consequential failure that is likely to recur.
+- Do not add manifests, compliance layers, workflow engines, broad test suites, automatic CPU
+  fallbacks or release infrastructure without a demonstrated need.
+- Existing checks are tools to use when relevant, not a checklist to expand or rerun for every edit.
+
+Preserve the hard rules below and the separation of authoring and rendering processes.
+
+## GitHub workflow
+
+- Track concrete work in Issues and group related deliverables in Milestones.
+- Use a branch and focused PR for each change, linking its Issue with `Closes #...`.
+- Keep PR descriptions brief: the problem, the change and the checks actually run.
+- GitHub holds active work status; planning docs hold design context and handoff notes.
+- Commit only when requested. Push and merge only within the owner's authorization; review the
+  final PR diff before merging. Keep the existing neutral commit-message rules.
+
 ## Narrative rule
 
 The target (2026-10-26) is a 100% NVIDIA pipeline: OpenUSD Exchange SDK, ovrtx/ovstage, NVIDIA's USD
@@ -77,7 +105,8 @@ Warp filtered downsampling with `--supersample 2`; `--res` remains the output si
 - **Do not install `usd-core`.** `usd-exchange` (NVIDIA's OpenUSD Exchange SDK) bundles its own
   OpenUSD 26.8 `pxr` and warns that usd-core conflicts with it. Author through `usdex.core` helpers
   where they exist, and fall back to plain `pxr` otherwise.
-- Validate every asset with `.venv/Scripts/nvidia_usd_validate.exe <file>` before handing it on.
+- Use `.venv/Scripts/nvidia_usd_validate.exe <file>` for changed USD assets when checking authoring
+  correctness or integration. Documentation-only changes do not require asset validation.
 - Author with `pxr` and render with ovrtx in **separate processes**, since ovrtx bundles its own USD
   runtime.
 - Always set `omni:rtx:rendermode = "PathTracing"` on the RenderProduct (ovrtx issue #5: black frames

@@ -8,7 +8,7 @@
 # generated USDA layer that sublayers the scene, so the authored scene stays untouched.
 # By default the ghost shows only in the blueprint camera's view (Main), and the lighting QC spheres
 # are hidden (--qc shows them). --prefix names the outputs, e.g. --prefix final_ for the finals.
-# Exit status is 1 if any requested product produced no frame.
+# Exit status is nonzero if a requested product has no frame or fails to converge.
 import argparse
 import os
 from math import gcd
@@ -40,12 +40,31 @@ def write_override(scene, products, res, spp, ghost, qc, out_dir=OUT_DIR,
     rel = os.path.relpath(scene, out_dir).replace("\\", "/")
     vis = "inherited" if ghost else "invisible"
     qc_vis = "inherited" if qc else "invisible"
-    lines = ["#usda 1.0", "(", f"    subLayers = [@{rel}@]", ")", "",
-             'over "World"', "{", '    over "Guides"', "    {", '        over "FlowDomain"', "        {",
-             f'            token visibility = "{vis}"', "        }", "    }",
-             '    over "Props"', "    {", '        over "QcSpheres"', "        {",
-             f'            token visibility = "{qc_vis}"', "        }", "    }", "}", "",
-             'over "Render"', "{"]
+    lines = f'''#usda 1.0
+(
+    subLayers = [@{rel}@]
+)
+
+over "World"
+{{
+    over "Guides"
+    {{
+        over "FlowDomain"
+        {{
+            token visibility = "{vis}"
+        }}
+    }}
+    over "Props"
+    {{
+        over "QcSpheres"
+        {{
+            token visibility = "{qc_vis}"
+        }}
+    }}
+}}
+
+over "Render"
+{{'''.splitlines()
     for p in products:
         lines += [f'    over "{p}"', "    {"]
         if res:
@@ -64,7 +83,6 @@ def write_override(scene, products, res, spp, ghost, qc, out_dir=OUT_DIR,
 def render_batch(rtx, scene, products, res, spp, ghost, max_steps, tag, qc, out_dir,
                  sample_batch=DEFAULT_SAMPLE_BATCH):
     """Render one group of products that share a ghost setting. Returns the products with no frame."""
-    import numpy as np
     from image_io import write_rgb
 
     import rtx as rt
@@ -77,16 +95,9 @@ def render_batch(rtx, scene, products, res, spp, ghost, max_steps, tag, qc, out_
         if path not in images:
             print(f"{name}: no frame captured (last status {status.get(path)})")
             continue
-        px = images[path]
-        progression, converged = status[path]
-        rgb = px[..., :3].astype(np.float32)
-        luma = rgb @ np.array([0.2126, 0.7152, 0.0722], np.float32)
         dst = out_dir / f"{tag}{name.lower()}.png"
-        write_rgb(dst, px)
-        print(f"{name:7s} ghost={'on ' if ghost else 'off'} progression={progression} "
-              f"converged={converged} {px.shape[1]}x{px.shape[0]} mean={luma.mean():.1f} "
-              f"black%={(luma < 3).mean() * 100:.1f} clipped%={(rgb.max(axis=-1) >= 254).mean() * 100:.1f}"
-              f" -> {dst}")
+        write_rgb(dst, images[path])
+        print(f"{name} -> {dst}")
     return [name for path, name in names.items() if path not in images]
 
 
