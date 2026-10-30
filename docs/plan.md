@@ -6,6 +6,174 @@ fix concrete failures with small local changes and use only the checks needed to
 Render manifests, validation orchestration, broad CI/support matrices and material migrations
 are not planned requirements. Expand only for a demonstrated use. See `CLAUDE.md`.
 
+## Finalized experiment: the transforming proving hall
+
+The final Fable -> Astra -> Fable -> Astra exchange agrees on one story:
+**prompt -> live USD construction -> useful physical transformation -> matched Blueprint analysis.**
+State-of-the-art ambition belongs in the result, not in a larger harness. The constructor chooses
+an extraordinary facility and feasible mechanism; Stagewright connects existing libraries directly.
+
+### Creative brief and visual story
+
+Create a monumental automotive proving hall whose architecture reconfigures to change its useful
+access, clearance or enclosure. One driven input causes mechanically dependent architectural motion
+through simulated constraints. A hall opening into a courtyard is art direction, not a linkage recipe.
+Keep the vehicle as a scale reference. The change must read in a wide view and alter usable space;
+small cosmetic changes or movement of an incidental prop do not satisfy this experiment.
+
+The visual story moves from an establishing wide view, to a close view showing the drive and its
+physical dependency, then back to the transformed space. Camera animation supplies presentation;
+recorded solver motion supplies the physical evidence. During construction, show actual complete
+saves when the constructor publishes them. No imposed artistic phases or invented intermediate
+states. An authored assembly reveal is labelled presentation, not construction history. A single
+final save demonstrates final delivery but does not establish live build progression.
+
+Use terminal-style text directly over the video, without HUD panels. Keep the cool neutral
+structure, orange driven elements and blue dependent motion. Use ASD-STE100 writing rules for page
+text and consistent technical names. The current HUD uses dark text, larger readings and one result
+line. Labels and units use high contrast against the light image. Keep the moving parts clear of text.
+Show selected recorded values with replay/live state explicit.
+Translucent arm silhouettes use the USD camera, geometry and recorded poses. Warp composites them
+into the matching video frames to prevent browser overlay drift. They replace the broken native
+hidden-edge effect in the local probe. The video uses full-HD RTX frames. The loop
+samples recorded bridge travel, with equal holds at both ends and identical decoded end images.
+The timeline shows both directions without status labels; the return is not a second simulated operation. The HUD returns
+to the same data sample at the boundary. The centered readouts use animated angle arcs and a vertical lift indicator, with exact numbers.
+Fixed readout columns prevent digit changes from moving the graphics. Smaller numbers sit close
+to each graph, and the group sits higher in frame. Playback uses a play/pause icon and a thin
+progress track with an orange forward state and blue return state.
+They remain an HTML/SVG overlay; the outlines
+are in the MP4. The lower slider moves at a constant rate forward and backward with the replay. This does not establish a live backend. Reuse this presentation direction in the planned live window.
+
+The readiness rig has presentation-only rounded links, clevis mounts, washers and pivot pins over
+its immutable replay. The look layer retains source stage metadata. Recorded body motion and
+physics properties remain unchanged; the decorative hardware is not a new simulation result.
+
+The constructor may use one declared engine CLI, inspect its measured output and revise its design.
+State an observable useful-operation condition before execution. Preserve the initial candidate,
+evaluated revisions and exact feedback consumed; do not require a failure, repair or second design.
+Human visual acceptance and the recorded operation determine success, not the agent's own assertion.
+Rigid-body mechanism behavior does not establish structural adequacy or environmental performance.
+
+### The smallest harness
+
+- **Author and publish:** existing usdex/pxr functions in a frozen constructor workdir. One optional
+  declared helper publishes an immutable complete USD root with retained relative dependencies, then
+  advances one revision pointer. The constructor decides when to publish during its continuing session.
+  A pointer alone cannot make half-written assets safe. Results go outside published input revisions.
+- **Execute:** one separate ovphysx worker behind the engine CLI, used for headless runs and preview.
+  Record poses and only the joint/drive/contact observations actually available or explicitly computed.
+  Preview and exported USD replay use the same recorded samples. Missing required export is a partial
+  result, not a reason to simulate again just for presentation. Keep prescribed input distinct from
+  solver-owned motion. Hinges alone do not prove coordinated motion; resolve constraint feasibility.
+- **Observe:** one renderer owner, ovstage/ovrtx -> ovstream -> small no-build browser client.
+  Show the exact prompt, configured model/effort, saved revision and status. Revision selection is
+  separate from the USD playhead. Keep the last good revision identified after failure. Saved replay
+  is labelled. Viewer cameras and reversible display state stay outside source USD. No full editor,
+  new chat backend or constructor coaching channel. Retain final-capture convergence behavior.
+
+Follow [NVIDIA's viewer guidance](https://github.com/NVIDIA/skills/blob/main/skills/omniverse-realtime-viewer/SKILL.md).
+The [maintained Web SDK sample](https://docs.omniverse.nvidia.com/ov-web-sdk/latest/web-sample/overview.html)
+supports TypeScript without React but targets Kit; a compatible standalone client must be proved.
+A disposable no-download JPEG publication probe may precede streaming, then is retired. Keep the
+existing author/renderer boundary and separate physics process. Runtime ordinals are not saved
+revision history; retain actual USD revisions. No new transport, publication manager or orchestrator.
+
+Use `CLAUDE.md` for clean construction, frozen inputs and the existing run record. Preserve the returned
+`requested_model`, `requested_effort`, `actual_model`, `effective_effort`, resolution, context/routing
+notes and workdir digest exactly. Null remains unknown, not a blocker. Peer planning is outside the
+constructor's context except the selected frozen brief and tool reference. Adapt the reasoning/tool/
+feedback pattern of [USD Content Agents](https://github.com/NVIDIA-Omniverse/usd-content-agents), not its stack.
+
+### Two delivery gates, one issue
+
+1. **Live transforming hall:** show meaningful completed USD saves during the constructor session,
+   a scene-wide useful transformation caused by the solver, and an inspectable stage plus recorded
+   replay. No manufactured history or mandatory redesign. Export the actual story with existing NVENC
+   tools. Use a public-safe authored vehicle; keep accepted media unchanged until a replacement is accepted.
+2. **Matched Blueprint result:** show one permitted actual scientific result in the same application
+   window, tied to matching geometry identity, inference parameters, case and source revision. This
+   follows the grand physics demonstration and is required for full Issue #5 completion, not optional
+   forever. Mere Blueprint scene composition does not satisfy the results gate.
+
+For every prompt, expose its actual scene revision and result availability: pending, cached, fresh
+or unavailable, with source case/revision identified. Keep an older result labelled as older. A prompt
+that changes unsupported geometry gets unavailable analysis, not a borrowed field. Our existing
+override composes and renders; full Blueprint application loading and inference have not run.
+
+The [Blueprint developer guide](https://github.com/NVIDIA-Omniverse-blueprints/digital-twins-for-fluid-simulation/blob/main/docs/developer-guide.md)
+uses matched result revisions for visualization and streaming. The owner-approved NanoVDB case and
+mesh are now downloaded and hash-verified. Warp SimData -> ordinary derived USD -> the same renderer
+is implemented and displayed. Source history associates this exact pair with the provider's bundled
+configuration. Retain the cached-reference scope and the original source evidence. No second
+streaming backend or speculative parser is needed.
+Kit root loading and client compatibility remain unproved; default_stage metadata is insufficient.
+
+Cached tracer animation is visualization of a steady field, not a transient solve or new inference.
+The [NVIDIA CAE blueprint article](https://developer.nvidia.com/blog/rapidly-create-real-time-physics-digital-twins-with-nvidia-omniverse-blueprints/)
+explains the design/simulation/visualization loop and limited-geometry surrogate context. A changed
+hall does not establish new aerodynamic predictions. Never replace a field's vehicle geometry with
+the public prop. Protected car views remain under `build/private/`, excluded from public capture.
+
+### Useful reuse, without a library collection
+
+| Use | Reuse and boundary |
+|---|---|
+| Procedural environment | Existing OpenUSD Exchange, Warp geometry/textures and codecs. Native references/instances for useful repetition; independent mechanical bodies remain identifiable. Retain useful coarse/final variants, not an automatic distance-LOD claim. |
+| Operable architecture | OpenUSD UsdPhysics joints/drives plus ovphysx and registered external PhysX schemas. Prove actual backend support; collect contacts only if the chosen operation needs them. |
+| Live result | Existing ovstage/ovrtx and compatible ovstream client. One owner for stage lifetime, updates and rendering; no browser USD renderer. |
+| Matched CAE case | NVIDIA Warp SimData for supported field processing, not a solver. Use CAE OpenUSD Plugins/Kit only when the actual case requires them. Keep conflicting Python/USD runtimes isolated. |
+
+Apply [NVIDIA asset principles](https://docs.omniverse.nvidia.com/usd/latest/learn-openusd/independent/asset-structure-principles.html)
+through existing usdex helpers: stable lightweight interfaces, reusable referenced components, heavy
+content behind payloads where useful, and computed layers over retained source. No fixed layer count,
+scene taxonomy, asset catalog or instancing rewrite. Purpose is not automatic LOD.
+
+[ovphysx](https://github.com/NVIDIA-Omniverse/PhysX/tree/main/ovphysx) and
+[Warp SimData](https://github.com/NVIDIA/warp-simdata) have open-source implementations; prebuilt
+ovphysx wheels and ovrtx/ovstream retain NVIDIA runtime terms. Do not call the entire runtime open
+source. The construction model and Python orchestration remain outside the NVIDIA core scene claim.
+Defer BRep, FEA, fresh CFD for arbitrary prompts, broad material migration, collection overlays and
+new optimization/agent frameworks. Appearance does not supply physical properties. Warp installation
+does not differentiate PhysX. No speculative validation program.
+
+### Implementation progress and next steps
+
+1. **Readiness reference frozen.** GPU physics, recorded USD replay, RTX capture and NVENC output
+   are proven for the zero-gravity mechanism. The local looping reference is complete. Keep it fixed.
+2. **Live observer implemented.** The direct publisher creates immutable complete USD packages.
+   One OVStage/RTX owner streams through ovstream to a small no-build NVIDIA browser client.
+   Browser checks cover two distinct revisions, independent playback and last-good retention.
+   Persistent animated CUDA capture passes on the minimal fixture. Complex preview accumulation
+   remains distinct from final capture, whose convergence requirement stays intact.
+3. **Grand construction and playback review completed.** Trial 001 used the unchanged
+   frozen corpus, requested gpt-6-astra / max and clean context. The constructor produced ASCENT,
+   retained its evaluated revisions and published the actual solver replay. One input drives the
+   dependent architecture; the no-drive control stays stationary. Published gate geometry clears
+   the stated opening condition and replay matrices agree within floating-point precision. Keep
+   zero-gravity mechanism scope explicit. Served model/effort remain unknown; the returned context
+   report proves startup, not instruction ingestion, and no execution transcript was returned.
+4. **Private provider reference composed.** The approved cache and mesh match provider LFS identities
+   and the original release's case binding. Warp SimData derives a speed slice and streamlines.
+   A separate private display assembly preserves their common transform beside the unchanged hall
+   replay and adds a camera inspection pass. This is a provider cached reference, not fresh inference
+   or hall CFD. Original generation-session and checkpoint digests remain unknown. The full-HD loop passes
+   decoded endpoint equality, equal holds and symmetric source ordering. Browser playback, seeking
+   and controls pass. Native USD time changes also show the closed gate, raised gate and reference
+   camera. A fresh-tab disconnect/reconnect and page reload also pass against the same running
+   observer. No lifecycle code change was needed. Keep protected data and renders under build/private.
+   The owner approved the focused source delivery; the separate smoother hall-only film stays local
+   until visual acceptance.
+
+
+See docs/live-viewer.md for setup and use. Keep private data, results and frozen construction records
+under ignored build/. The owner authorized the focused source commit, PR and merge, plus a separate
+hall-only camera presentation. Keep delivery status in Issue #5 and its linked PR. Preserve earlier
+unrelated candidate edits and accepted public media. GPU work requires vram-mcp coordination. Do not publish
+render times or performance figures. Track active work in existing Issue #5 and milestone 3.
+
+## Delivered baseline
+
 Status as of 2026-10-27 (handoff notes in `docs/handoff.md`; tasks 10 and 11 are complete; task 13 adds a loop shot and prepares sharing):
 
 - **Done:**
@@ -54,8 +222,7 @@ Non-NVIDIA tools: ffmpeg only for the optional `--gif` fallback. Blender is opti
 installed. If it is used, it is for hand-detailing only, since its add-on runs arbitrary Python and has
 telemetry on by default.
 
-**Not available:** NVIDIA has no open STEP/CAD to USD converter outside Kit. Geometry is therefore
-parametric Python through usdex, which an agent can regenerate deterministically.
+Geometry in this harness is parametric Python through usdex. STEP import is not implemented.
 
 ## Geometry spec (centimetres, Z-up; flow runs along world -Y)
 
@@ -159,8 +326,9 @@ parametric Python through usdex, which an agent can regenerate deterministically
     - **10e (deferred, optional). Materials: procedural to NVIDIA SimReady materials** (OpenPBR /
       MaterialX). The Hugging Face dataset `nvidia/PhysicalAI-SimReady-Materials` is gated (HTTP 401),
       so its licence is unknown until the owner accepts the terms. No dataset was downloaded.
-      ovrtx support for OpenPBR or MDL is UNTESTED (only UsdPreviewSurface is proven).
-      Test with one material before porting. Ask before any unpinned download.
+      One installed usdex MDL helper fixture rendered successfully in pinned ovrtx; broader MDL
+      and OpenPBR graphs remain unverified. Test the actual material before porting. Ask before
+      any unpinned download.
     - **Done when (task 10):** README toolchain table names an NVIDIA tool for every stage,
       the install lines in CLAUDE.md and README match, finals and the dolly are re-rendered
       through the new path, and ffmpeg is no longer required unless `--gif` is passed.

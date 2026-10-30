@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Stagewright / live USD</title>
+  <style>
+    :root { color-scheme:light; --ink:#14232d; --dim:#31434f; --orange:#9d3e0b; --blue:#105686; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:#10161b; color:var(--ink); font:13px/1.5 Consolas,'Cascadia Mono',monospace; }
+    .shell { max-width:1600px; margin:24px auto; padding:0 24px; }
+    .viewer { position:relative; overflow:hidden; background:#b0b0b0; aspect-ratio:16/9; }
+    video { display:block; width:100%; height:100%; object-fit:contain; }
+    .hud { position:absolute; inset:0; z-index:1; pointer-events:none; }
+    .top { position:absolute; top:24px; left:28px; right:28px; display:flex; justify-content:space-between; align-items:start; gap:24px; }
+    .brand { font-size:20px; font-weight:600; letter-spacing:.12em; }
+    .subtitle { font-size:12px; color:var(--dim); }
+    .connection { display:flex; align-items:center; gap:18px; text-align:right; }
+    #status { color:var(--dim); font-size:12px; }
+    #status[data-connected="true"] { color:var(--blue); }
+    .information { position:absolute; top:85px; left:28px; right:28px; display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr); gap:40px; }
+    .label { color:var(--dim); font-size:11px; }
+    #prompt { margin-top:4px; max-height:4.5em; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; pointer-events:auto; }
+    .models { margin:0; display:grid; grid-template-columns:auto minmax(0,1fr); align-content:start; gap:5px 14px; font-size:12px; }
+    .models dt { color:var(--dim); }
+    .models dd { margin:0; overflow-wrap:anywhere; }
+    .revision { position:absolute; bottom:72px; left:28px; right:28px; display:flex; align-items:center; gap:14px; }
+    .field { margin-left:auto; color:var(--dim); font-size:12px; }
+    .transport { position:absolute; bottom:22px; left:28px; right:28px; display:flex; align-items:center; gap:18px; }
+    button,select,input { pointer-events:auto; }
+    button,select { font:inherit; color:var(--ink); }
+    button { min-height:32px; padding:0; border:0; background:none; cursor:pointer; }
+    button:hover { color:var(--blue); }
+    button:disabled,select:disabled,input:disabled { opacity:.45; cursor:default; }
+    button:focus-visible,select:focus-visible,input:focus-visible { outline:1px solid var(--blue); outline-offset:4px; }
+    select { max-width:240px; border:0; border-bottom:1px solid #31434f55; border-radius:0; background:transparent; padding:4px 20px 4px 0; font-size:12px; }
+    option { background:#d5dce0; color:var(--ink); }
+    #latest,#connect { color:var(--blue); font-size:12px; }
+    #play { display:grid; place-items:center; min-width:28px; }
+    #play svg { width:18px; height:18px; }
+    .clock { min-width:13ch; font-size:12px; white-space:nowrap; font-variant-numeric:tabular-nums; }
+    #seek { --progress:0%; appearance:none; -webkit-appearance:none; flex:1; min-width:30px; height:28px; margin:0; padding:0; border:0; background:transparent; cursor:pointer; }
+    #seek::-webkit-slider-runnable-track { height:2px; border-radius:2px; background:linear-gradient(to right,var(--orange) 0 var(--progress),#31434f33 var(--progress) 100%); }
+    #seek::-webkit-slider-thumb { appearance:none; -webkit-appearance:none; width:10px; height:10px; box-sizing:border-box; margin-top:-4px; border:2px solid var(--orange); border-radius:50%; background:#d5dce0; }
+    #seek::-moz-range-track { height:2px; background:#31434f33; }
+    #seek::-moz-range-progress { height:2px; background:var(--orange); }
+    #seek::-moz-range-thumb { width:10px; height:10px; box-sizing:border-box; border:2px solid var(--orange); border-radius:50%; background:#d5dce0; }
+    #error { position:absolute; left:28px; right:28px; bottom:119px; max-height:3em; overflow:auto; color:var(--orange); font-size:12px; }
+    [hidden] { display:none !important; }
+    @media(max-width:900px) {
+      .shell { margin:12px auto; padding:0 12px; }
+      .viewer { aspect-ratio:4/3; }
+      .information { gap:24px; font-size:12px; }
+      .models { font-size:11px; }
+    }
+    @media(max-width:600px) {
+      .shell { margin:0; padding:0; }
+      .viewer { aspect-ratio:4/5; }
+      .top { top:18px; left:18px; right:18px; }
+      .brand { font-size:17px; }
+      .connection { flex-direction:column; align-items:end; gap:0; }
+      #status { font-size:11px; }
+      .information { top:81px; left:18px; right:18px; grid-template-columns:1fr; gap:12px; }
+      #prompt { max-height:3em; }
+      .models { gap:2px 12px; }
+      .revision { left:18px; right:18px; bottom:68px; gap:10px; flex-wrap:wrap; }
+      .revision > .label { display:none; }
+      select { max-width:160px; }
+      .field { font-size:11px; }
+      .transport { left:18px; right:18px; bottom:18px; gap:10px; }
+      .clock { min-width:12ch; font-size:11px; }
+      #error { left:18px; right:18px; bottom:115px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="viewer" aria-label="USD scene viewer">
+      <video id="remote-video" autoplay muted playsinline tabindex="-1" aria-label="Live rendered USD scene"></video>
+      <div class="hud">
+        <header class="top">
+          <div><div class="brand">STAGEWRIGHT</div><div class="subtitle">Live USD / recorded replay</div></div>
+          <div class="connection"><span id="status" role="status">Disconnected</span><button id="connect" type="button">Connect</button></div>
+        </header>
+        <section class="information" aria-label="Construction run">
+          <div><div class="label">Prompt</div><div id="prompt">Wait for the construction prompt.</div></div>
+          <dl class="models">
+            <dt>Run</dt><dd id="run-status">unknown</dd><dt>Configured</dt><dd id="configured">unknown / effort unknown</dd><dt>Actual</dt><dd id="actual">unknown / effort unknown</dd></dl>
+        </section>
+        <div id="error" role="alert" hidden></div>
+        <div class="revision">
+          <label class="label" for="revision">Saved revision</label>
+          <select id="revision" aria-label="Select a saved USD revision" disabled><option>No revision</option></select>
+          <button id="latest" type="button" disabled>Latest</button>
+          <span class="field">Field: <output id="field">unavailable</output></span>
+        </div>
+        <div class="transport">
+          <button id="play" type="button" aria-label="Play recorded motion" title="Play" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path id="play-symbol" fill="currentColor" d="M7 4L20 12L7 20Z"/></svg></button>
+          <span class="clock" aria-label="Replay time"><output id="seconds">0.00</output> / <output id="end">0.00</output> s</span>
+          <input id="seek" type="range" min="0" max="0" step="0.001" value="0" aria-label="Select recorded replay time" disabled>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="/vendor/ov-web-rtc.umd.cjs"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

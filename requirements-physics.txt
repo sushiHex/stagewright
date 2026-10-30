@@ -1,0 +1,7 @@
+# Optional isolated worker; the author and renderer keep requirements.txt.
+ovphysx==0.7.0.74035321
+physx-usd-schemas==25.11.2.72696984
+packaging==23.2
+ovstage==0.3.0.1791986420
+warp-lang==1.18.0
+numpy==2.5.4

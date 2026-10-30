@@ -13,7 +13,11 @@ through one override layer. The plan and task list are in `docs/plan.md`. Read i
 
 **SIMPLIFICATION IS PROGRESS.**
 
-Keep Stagewright a light, direct harness for a 100% NVIDIA core scene pipeline. Enforce YAGNI
+Keep Stagewright a light, direct harness for a 100% NVIDIA core scene pipeline. Reusing NVIDIA
+open-source technology and the wider OpenUSD ecosystem, especially NVIDIA-origin components,
+is part of the mission. Prefer those components over bespoke equivalents when they serve the
+scene, simulation or live experience. Follow applicable NVIDIA USD and library guidance with
+only the structure the current use needs. Keep the application glue small. Enforce YAGNI
 over TDD: implement the current need with the smallest clear change, then prove the behavior that
 matters. Tests serve the implementation; they do not drive speculative architecture.
 
@@ -25,8 +29,48 @@ matters. Tests serve the implementation; they do not drive speculative architect
 - Do not add manifests, compliance layers, workflow engines, broad test suites, automatic CPU
   fallbacks or release infrastructure without a demonstrated need.
 - Existing checks are tools to use when relevant, not a checklist to expand or rerun for every edit.
+- Prefer video when showing results with motion, and looping playback for mini demos. Present local
+  files with their full absolute paths.
 
 Preserve the hard rules below and the separation of authoring and rendering processes.
+
+## Construction experiments
+
+Keep planning and peer review separate from construction trials. Each trial starts in a fresh
+session with the exact brief and a frozen, declared set of starting files and reference material.
+Use Hardline Codex default mode with `context="clean"`, `write=True` and that frozen copy as
+`workdir`. The copy needs its own real `.git` directory; a linked Git worktree is not supported.
+Pin the full model ID and effort on every call. Advisory mode cannot provide construction
+write access. Claude clean writes remain unsupported.
+
+Keep one small record containing:
+
+- The exact prompt, starting revision, pre-run workdir content hash and declared references.
+- Returned `requested_model`, `requested_effort`, `actual_model`, `effective_effort`,
+  `model_resolution` and execution mode exactly as supplied; preserve null as unknown.
+- `instructions_note`, requested/selected provider, quota redirection and fallback metadata.
+- The returned `context` report, including configured/discovered/observed evidence and limits.
+- The first result, transcript and resulting artifacts, before human or peer feedback.
+
+Codex clean runs are ephemeral, have no MCP servers or connectors, and exclude the user's
+Codex home/configuration. Freeze workspace instructions with the inputs. Retain `context.not_removed`:
+system/managed configuration, environment, external skills, web search and other documented
+sources remain possible. Clean context is not filesystem confinement. The context report's
+observed field currently establishes thread startup, not instruction ingestion. Preserve any
+`instructions_note` about the Windows AGENTS-loading retry. Claude global instructions and
+auto-memory loading remain unverified. Keep private external context out of the repository.
+
+Codex `actual_model` and `effective_effort` are unknown; model resolution identifies only the
+configured model. Claude reports the served model, but effective effort is unknown for both.
+Retain routing evidence even when pinned. Record execution feedback explicitly; coached
+revisions and model changes are separate iterations. These controls belong to the experiment
+runner, leaving the construction agent free to solve the brief.
+
+A trial may explicitly allow the constructor to invoke a frozen engine tool and read its own
+execution feedback. Preserve the initial authored candidate before physical evaluation, each
+evaluated revision and the actual feedback consumed. This measures construction with execution
+feedback; later human or peer coaching remains a separately labelled iteration. The viewer stays
+an observer. Keep this permission and the tool contract in the declared inputs.
 
 ## GitHub workflow
 
@@ -54,6 +98,7 @@ all software dependencies or the coding agent are NVIDIA products, or claim "no 
   (pre-release). Write our own calls against the documented API.
 - **Never publish render times or any performance figure.** This covers the README, commits and
   captions (ovrtx LICENSE, benchmark clause).
+- **Use vram-mcp before touching the GPU**, including physics initialization, rendering and encoding.
 - **Label it a conceptual presentation environment.** Only claim what was actually checked: that the
   layer composes, the transforms, the bounds, and a render from their camera. Never claim it runs
   inside the blueprint application.
@@ -98,6 +143,29 @@ for array exchange, USD packing and diagnostic checks. Run `tools/check_compute.
 and codec regressions. `tools/check_presentation.py` checks authored motion and framing. Motion uses
 Warp filtered downsampling with `--supersample 2`; `--res` remains the output size. Optional task
 10e is deferred pending dataset acceptance and download approval.
+
+### Optional physics worker
+
+The owner approved NVIDIA tools for this project. `requirements-physics.txt` pins the optional
+worker separately; keep the production author/renderer environment unchanged. The physics environment
+uses ovstage population without pxr. Use vram-mcp and reserve capacity before GPU work.
+
+```
+uv venv --python .venv/Scripts/python.exe --no-python-downloads build/envs/physics
+uv pip install --python build/envs/physics/Scripts/python.exe -r requirements-physics.txt
+.venv/Scripts/python.exe tools/probe_mechanism.py build/probes/physics/input.usda
+.venv/Scripts/python.exe tools/physics_usd.py pack build/probes/physics/input.usda build/probes/physics/input.usdz
+build/envs/physics/Scripts/python.exe tools/simulate.py build/probes/physics/input.usdz --out build/probes/physics/result
+.venv/Scripts/python.exe tools/physics_usd.py replay build/probes/physics/result
+```
+
+Use new output paths. Native USDZ packaging freezes composed layers and asset dependencies, allowing
+one input checksum to identify the simulated content. The pose-only worker uses DirectGPU and records
+actual pose-array devices, fixed-step samples and package versions. Replay supports static, unit-scale
+body frames; it resets transform inheritance for recorded world poses. Authored body-frame animation,
+scale/shear, contacts and runtime controls beyond authored constant drives are not established by this
+readiness probe. The zero-gravity four-bar and no-drive control prove a constrained mechanical
+dependency, not a completed hall, loaded mechanism, structure or model-construction trial.
 
 - **Run throwaway probe scripts with `python -I`.** A stray `warp.py` sitting next to a probe script
   shadowed the real `warp` package on 2026-10-26. Never name a file in `tools/` after a package.

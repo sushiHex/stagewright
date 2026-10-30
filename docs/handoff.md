@@ -1,9 +1,126 @@
 # Handoff
 
-State of the repo as of 2026-10-28, for the next session picking it up cold. Read `CLAUDE.md` first,
+State of the repo as of 2026-10-30, for the next session picking it up cold. Read `CLAUDE.md` first,
 then `docs/plan.md`, then this file.
 
 ## Where things stand
+
+- Owner feedback: ASCENT is an interesting, higher-quality scene than the earlier result. Camera movement feels too stop-and-go; use smoother transitions in a future presentation pass. The car and field slice feel out of place in the hall story, but are a useful integration test. Keep the cached case private and separate from the main scene narrative. The owner subsequently approved the focused source commit, PR and merge, plus a separate smoother hall-only presentation. The new film stays local until visual acceptance.
+
+- [Issue #5](https://github.com/sushiHex/stagewright/issues/5), milestone 3, tracks the owner-authorized focused source delivery. Final capture and browser
+  checks are complete; use the linked PR for current delivery status. The direct harness is implemented: publish creates immutable
+  complete USDZ revisions; engine records isolated CUDA physics and exports USD replay; observe owns
+  one OVStage/RTX renderer and streams through ovstream to the no-build browser client. Revision
+  selection, replay controls and last-good retention passed browser checks. See docs/live-viewer.md.
+
+  Construction trial 001 completed with requested gpt-6-astra / max and context=clean. Its frozen
+  starting corpus is unchanged. The constructor built ASCENT, a large proving hall with an original
+  vehicle, referenced vault ribs and a three-body lifting entrance. Five actual complete publications
+  retain its progression. Revision 0005 is the final recorded solver replay. One angular drive moves
+  the undriven canopy and follower through four joints. The no-drive control stays stationary.
+  Parent checks of the actual published gate geometry and sampled world matrices support the scoped
+  result: about 12.2 m lower-edge height above the nominal datum, with replay agreement within
+  floating-point precision. The lane surface is 0.025 m above that datum. This is zero-gravity
+  mechanism motion, not structural, contact, loaded-operation or aerodynamic validation.
+
+  Evidence is under ignored build/experiments/transforming-hall-001/. The exact prompt, requested
+  settings, pre-run hashes, first-result hashes and all evaluations remain. admission-003/result.json
+  retains the full returned Hardline result. actual_model/effective_effort remain null. The returned
+  context report records configured clean isolation and observed thread startup, not instruction
+  ingestion. The successful response has no execution transcript, so all tool reads cannot be
+  independently audited. Keep that limit visible; do not call this a fully audited context trial.
+
+  The first two admissions stopped at Hardline's enforcing MXC preflight. The owner approved a narrow
+  fix in the separate Hardline repo: a separate startup allowance, with all policy/canary/pin checks
+  retained. Focused checks and an original-defect mutation pass. A fresh MCP process with the same
+  registration configuration and a private trial store ran the successful attempt. Its adapter hash
+  is retained. The main session's MCP process still runs old code; reconnect before relying on its
+  patched behavior. No elevated or unrestricted fallback was used. The temporary driver was stopped
+  after result collection. The corrected saved driver handles nested job status for future runs.
+
+  The first physics evaluation hit an unwritable OS temp directory. The constructor recovered on its
+  own using workspace scratch space. Root tools/engine.py now supplies worker-local TMPDIR/TEMP/TMP;
+  a focused real-child CPU probe verifies the directory and unchanged caller environment. The frozen
+  constructor tools remain unchanged. No publisher fix was needed: the nested-package animation probe
+  passes. Complex persistent preview accumulation remains a known limitation; final captures retain
+  convergence checks. The private capture now applies static pose layers to one renderer/Stage: five
+  sampled attributes get strong defaults over the immutable source. Closed, open and reference views
+  converge. A parallel capture attempt did not progress reliably and its extra VRAM claim is released.
+
+  The approved private Blueprint cache and mesh match their LFS identities. Historical provider
+  source binds that exact pair and configuration, including High ride height, in release 2026.05;
+  those identities persist through the frozen source revision. This supports a provider-published
+  cached reference, not fresh inference or independent attestation of its original generation.
+  Warp SimData derives the actual speed slice and streamlines. Source evidence is retained in
+  build/checks/blueprint-source-provenance.json and with the private display assembly.
+
+  build/private/ascent-review/ contains the separate post-construction display assembly. It keeps
+  the complete field/mesh group registered, leaves recorded hall coordinates unchanged, disables
+  duplicate case cameras/lights, and adds a camera inspection pass. Its publications retain the five
+  original package bytes and add private revision 0006. Separate private revision 0007 corrects the camera pass that hid
+  the linkage behind a foreground column. The original model camera remains intact. Geometry,
+  animation, camera and dependency checks pass. The full-HD loop is complete: decoded first/last
+  pixels match, holds are equal and source ordering is symmetric. Browser checks pass for play/pause,
+  seeking, loop toggle, recorded clearance and the cached-reference label. The private HTTP preview
+  needs byte ranges for Chrome seeking; build/checks/serve_ascent_review.py supplies them. A nearest-
+  available-sample scrubber fix avoids jumps to the start. Top-edge shading keeps labels readable
+  without panels or text halos. The native observer also shows closed and raised geometry plus the
+  reference camera after actual USD time changes. No animation exporter change was needed. Browser
+  automation later timed out on review-tab reloads and recovery. A subsequent focused fresh-tab
+  check passes explicit disconnect/reconnect, page reload, delivered video and raised-geometry
+  seeking against one running observer. No lifecycle code change was needed. This does not explain
+  or universally exclude the earlier automation failure. The unverified native contrast CSS
+  change was removed, retaining the viewer version used for the successful motion checks. Native
+  overlay contrast over dark geometry remains a visual limitation. The private movie page was
+  visually checked after its shading fix.
+  Keep all protected data and renders private. The live observer was stopped after review and its
+  GPU reservation released. The private HTTP movie player remains available. Use a new observer
+  session directory and coordinate through vram-mcp before starting it again.
+
+  The polished readiness mini-demo under build/probes/physics/final/ is frozen. Accepted public media
+  remain unchanged. Delivery uses a focused source branch and linked PR. Earlier unrelated wind-tunnel candidate
+  edits remain intact. The focused PR draft is build/checks/live-harness-pr.md; capture and browser review are complete. The focused worktree
+  is C:/Users/kfaim/repos/stagewright-live-harness on branch live-scene-harness. It contains only the
+  21 whitelisted source/doc files; no build or external data. Consequential-risk review found no
+  blocker. The owner authorized its commit, PR and merge. A separate hall-only continuous camera
+  presentation is in progress under build/candidates/ascent-presentation-002; do not include that
+  output or the cached reference in this source PR. Avoid more mini-demo polish or new features.
+
+- Hardline [PR #123](https://github.com/sushiHex/hardline-mcp/pull/123) is merged at `2a24ee3`.
+  After the owner-authorized configuration edit and restart, server_info verifies code revision
+  `2a24ee3b0bbd` and `write_enabled: true`. The write-gate blocker is cleared. It is enabled on the
+  shared Codex hardline MCP registration; individual calls still need write=True and workdir.
+  Construction uses context="clean" with a frozen workdir containing its own real .git directory.
+  Preserve requested_model/requested_effort/actual_model/effective_effort exactly as returned,
+  alongside resolution, routing/instruction notes, context report and pre-run workdir digest.
+  Null remains unknown. Observed startup is not proof of instruction ingestion; retain residual
+  context limits. Claude clean writes remain unsupported. No additional Hardline feature is needed;
+  USD publication/rendering stays in Stagewright. These peer reviews are planning, not construction.
+
+- [Issue #4](https://github.com/sushiHex/stagewright/issues/4), milestone Sectional environment
+  construction: branch `sectional-housings` adds explicit model-directory destinations to both
+  builders, a shared profile/station construction for nozzle and collector exterior jackets,
+  and `coarse`/`final` variants on `/Environment/Geometry/Tunnel/Housings`. Candidate outputs live
+  under ignored `build/candidates/sectional-housings/`. Existing geometry, lights, textures and
+  accepted media are unchanged; both variants have matching bounds and clear the flow domain.
+  The validator has only the accepted USDA storage exception. Presentation motion checks and
+  a focused check of the new housings against blueprint camera samples pass. Renderer startup
+  succeeds again without code or settings changes; the cause of the earlier stall remains
+  unconfirmed. Matched Hero/Wake baseline and final-layout renders, final Detail and coarse
+  Hero/Detail all completed through RTX. Both native USD variants render: coarse preserves
+  the layout and visibly reduces curved detail. The local `comparison.html` contains the
+  completed comparisons. Cutaways read most clearly in Detail; the broad collector view is
+  subtler. The owner judged this modification too subtle for the intended demonstration;
+  set further jacket refinement aside and retain the useful builder/LOD work. Changes remain
+  uncommitted; accepted assets and public media are untouched.
+
+- [Issue #3](https://github.com/sushiHex/stagewright/issues/3): an uncommitted scene candidate adds
+  one inset turntable marking using the existing Accent material (radii 460..480 cm, top Z 0.20 cm).
+  Astra and Fable agreed on the change. Candidate assets and the matched Hero render live under
+  ignored `build/candidates/turntable-marking/`. Containment and presentation checks pass; validation
+  has only the documented USDA storage exception. Existing environment attributes and textures
+  match the baseline. Canonical assets and accepted media remain unchanged pending visual acceptance;
+  do not refresh public media from this candidate yet.
 
 - Simplification pass: render CLIs now log output paths directly, without diagnostic-only pixel
   statistics; unused path constants were removed. Focused CPU checks confirm unchanged pixel
