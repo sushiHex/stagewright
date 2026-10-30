@@ -1,0 +1,2 @@
+# Optional adapter; keep the Warp and NumPy pins from requirements.txt.
+warp-simdata==0.2.0

@@ -7,17 +7,20 @@ from image_io import ImageCodec
 from video_pixels import to_nv12
 
 
-def encode_mp4(paths, destination, fps):
+def encode_mp4(paths, destination, fps, *, keyframe_interval=None):
+    """Encode a sequence; interval 1 makes repeated endpoint images independent keyframes."""
     with ImageCodec() as codec:
-        return _encode_mp4(paths, destination, fps, codec)
+        return _encode_mp4(paths, destination, fps, codec, keyframe_interval=keyframe_interval)
 
 
-def _encode_mp4(paths, destination, fps, codec):
+def _encode_mp4(paths, destination, fps, codec, *, keyframe_interval=None):
     paths = list(paths)
     if not paths:
         raise ValueError("No frames to encode")
     if fps <= 0 or 90000 % fps:
         raise ValueError("Frame rate must divide the 90 kHz MP4 clock")
+    if keyframe_interval is not None and keyframe_interval < 1:
+        raise ValueError("Keyframe interval must be positive")
     first = codec.read_rgb(paths[0])
     h, w = first.shape[:2]
     if w % 2 or h % 2:
@@ -27,8 +30,10 @@ def _encode_mp4(paths, destination, fps, codec):
     temporary = destination.with_suffix(".partial.mp4")
     # Convert explicitly: packed RGB input to the package encoder produces full-range
     # YUV without range metadata in this pinned version. NV12 preserves intended levels.
+    keyframes = {} if keyframe_interval is None else {
+        "gop": keyframe_interval, "idrperiod": keyframe_interval}
     encoder = nvc.CreateEncoder(w, h, "NV12", True, codec="h264", preset="P7",
-                                fps=fps, rc="constqp", constqp=18, bf=0)
+                                fps=fps, rc="constqp", constqp=18, bf=0, **keyframes)
     muxer = nvc.FFmpegMuxer(str(temporary), nvc.MEDIA_FORMAT.MP4, "h264", w, h,
                             fps, 1, 1, 90000, encoder.GetSequenceParams())
     ticks = 90000 // fps

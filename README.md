@@ -19,7 +19,7 @@ https://github.com/user-attachments/assets/bacc0ef1-b90b-4d65-8be2-4a333056c435
 | ![Wake-side view toward the collector](models/wind_tunnel/media/wake.jpg) | ![Lighting QC spheres beside the model](models/wind_tunnel/media/qc_main.jpg) |
 | Beside the model, looking downstream at the collector | Lighting QC: 18% grey, chrome and clear-coated paint spheres |
 
-[Quickstart](#quickstart) · [Technical guide](models/wind_tunnel/docs/guide.md)
+[Quickstart](#quickstart) · [Technical guide](models/wind_tunnel/docs/guide.md) · [Live USD guide](docs/live-viewer.md)
 
 ## From prompt to procedural world
 
@@ -39,6 +39,8 @@ is added only in the presentation layer.
 | Validate | NVIDIA USD validator |
 | Render and filter | ovrtx / ovstage (RTX PathTracing) + Warp filtering |
 | Images and video | nvImageCodec + PyNvVideoCodec / NVENC |
+| Optional physics | ovphysx CUDA pose recording + USD replay |
+| Optional live review | ovstream WebRTC + ovrtx |
 
 Python, uv and NumPy support the workflow; the coding agent supplies the prompt-to-code step.
 The optional GIF fallback uses FFmpeg. The NVIDIA claim covers the core scene and media stages above.

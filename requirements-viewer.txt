@@ -1,0 +1,2 @@
+# Optional browser streaming transport; keep requirements.txt pins unchanged.
+ovstream==0.5.7
