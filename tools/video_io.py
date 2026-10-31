@@ -1,7 +1,10 @@
 """Encode packed RGB frames with NVENC and mux MP4 through PyNvVideoCodec."""
 from pathlib import Path
+from collections import deque
+from tempfile import TemporaryFile
 
 import PyNvVideoCodec as nvc
+import warp as wp
 
 from image_io import ImageCodec
 from video_pixels import to_nv12
@@ -11,6 +14,15 @@ def encode_mp4(paths, destination, fps, *, keyframe_interval=None):
     """Encode a sequence; interval 1 makes repeated endpoint images independent keyframes."""
     with ImageCodec() as codec:
         return _encode_mp4(paths, destination, fps, codec, keyframe_interval=keyframe_interval)
+
+
+def _read_frames(paths, first, codec):
+    yield paths[0], first
+    for start in range(1, len(paths), 8):
+        batch = paths[start:start + 8]
+        # Decode on the consumer stream; DLPack retains the native image buffer.
+        yield from zip(batch, codec.read_images(
+            batch, cuda_stream=wp.get_stream("cuda:0").cuda_stream))
 
 
 def _encode_mp4(paths, destination, fps, codec, *, keyframe_interval=None):
@@ -52,12 +64,41 @@ def _encode_mp4(paths, destination, fps, codec, *, keyframe_interval=None):
             packet_count += 1
 
     try:
-        for i, path in enumerate(paths):
-            rgb = first if i == 0 else codec.read_rgb(path)
-            if rgb.shape != (h, w, 3):
-                raise ValueError(f"Frame dimensions differ: {path}")
-            mux(encoder.Encode(to_nv12(rgb)))
-        mux(encoder.EndEncode())
+        unique_paths = list(dict.fromkeys(paths)) if keyframe_interval == 1 else paths
+        if len(unique_paths) < len(paths):
+            # Reuse independent frames without keeping decoded images in memory.
+            pending_paths = deque()
+            packet_locations = {}
+            with TemporaryFile() as packet_store:
+                def collect(packets):
+                    for packet in packets:
+                        if not pending_paths or packet["picture_type"] != 3:
+                            raise RuntimeError("Expected an IDR packet for a pending frame")
+                        path = pending_paths.popleft()
+                        data = packet["data"]
+                        packet_locations[path] = (packet_store.tell(), len(data))
+                        packet_store.write(data)
+                for path, rgb in _read_frames(unique_paths, first, codec):
+                    if rgb.shape != (h, w, 3):
+                        raise ValueError(f"Frame dimensions differ: {path}")
+                    pending_paths.append(path)
+                    collect(encoder.Encode(to_nv12(rgb)))
+                collect(encoder.EndEncode())
+                if pending_paths or len(packet_locations) != len(unique_paths):
+                    raise RuntimeError("Encoder drain did not supply every unique frame")
+                for path in paths:
+                    offset, size = packet_locations[path]
+                    packet_store.seek(offset)
+                    data = packet_store.read(size)
+                    if len(data) != size:
+                        raise RuntimeError("Incomplete temporary packet read")
+                    mux([{"data": data, "picture_type": 3}])
+        else:
+            for path, rgb in _read_frames(paths, first, codec):
+                if rgb.shape != (h, w, 3):
+                    raise ValueError(f"Frame dimensions differ: {path}")
+                mux(encoder.Encode(to_nv12(rgb)))
+            mux(encoder.EndEncode())
         if packet_count != len(paths):
             raise RuntimeError(f"Encoded {packet_count} packets for {len(paths)} frames")
         muxer.Finalize()

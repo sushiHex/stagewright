@@ -41,6 +41,30 @@ class ImageCodec:
             raise RuntimeError(f"Could not decode {path}")
         return np.array(image.cpu(), copy=True)[..., :3]
 
+    def read_rgb_batch(self, paths):
+        """Decode a small batch in input order, returning owned RGB snapshots."""
+        return [np.array(image.cpu(), copy=True)[..., :3]
+                for image in self.read_images(paths)]
+
+    def read_images(self, paths, *, cuda_stream=0):
+        """Return native decoded images in order, with their buffers owned by each image."""
+        self._open()
+        paths = list(paths)
+        for path in paths:
+            if not Path(path).is_file():
+                raise FileNotFoundError(path)
+        if not paths:
+            return []
+        if self._decoder is None:
+            self._decoder = nvimgcodec.Decoder()
+        images = self._decoder.read([str(path) for path in paths], cuda_stream=cuda_stream)
+        if len(images) != len(paths):
+            raise RuntimeError("Incomplete image decode batch")
+        for path, image in zip(paths, images):
+            if image is None:
+                raise RuntimeError(f"Could not decode {path}")
+        return images
+
     def write_rgb(self, path, pixels):
         self._open()
         path = Path(path)
