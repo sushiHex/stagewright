@@ -31,7 +31,10 @@ def _nv12(rgb: wp.array(dtype=wp.uint8, ndim=3), out: wp.array(dtype=wp.uint8), 
 
 def to_nv12(rgb):
     h, w = rgb.shape[:2]
-    source = wp.array(np.ascontiguousarray(rgb), dtype=wp.uint8, device="cuda:0")
+    if hasattr(rgb, "__dlpack_device__") and rgb.__dlpack_device__()[0] == 2:
+        source = wp.from_dlpack(rgb)
+    else:
+        source = wp.array(np.ascontiguousarray(rgb), dtype=wp.uint8, device="cuda:0")
     output = wp.empty(h * w * 3 // 2, dtype=wp.uint8, device="cuda:0")
     wp.launch(_nv12, (h, w), inputs=[source, output, w, h], device="cuda:0")
     return output.numpy()
