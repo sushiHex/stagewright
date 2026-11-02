@@ -222,6 +222,7 @@ def observe(publications, session, port=8765, width=960, height=540, run_file=No
                                  "previous": (stage, metadata, ordinal, rendered)}
                     stage, metadata, ordinal, rendered = candidate_stage, next_metadata, 1, None
                     held = False
+            # A paused playhead still needs paced frames to keep the native stream alive.
             if connected and operation is None and metadata is not None and not held and now >= next_render:
                 try:
                     next_render = now + 1/30
@@ -258,14 +259,12 @@ def observe(publications, session, port=8765, width=960, height=540, run_file=No
                 else:
                     if result is not None:
                         valid = False
-                        converged = False
                         error = None
                         frame = None
                         try:
                             frame = rt.frame_of(result, metadata["product"])
                             if frame is not None:
-                                converged = frame.converged
-                                delivered = True
+                                delivered = False
                                 if metadata["var"] not in frame.render_vars:
                                     raise ValueError("the frame has no streaming image")
                                 # stream_video copies into server-owned storage before return.
@@ -277,6 +276,7 @@ def observe(publications, session, port=8765, width=960, height=540, run_file=No
                                         video = ovstream.VideoFrame.from_dlpack(mapped)
                                         try:
                                             server.stream_video(video)
+                                            delivered = True
                                         except ovstream.OvstreamError as transport_error:
                                             delivered = False
                                             expected = (transport_error.status == ovstream.ApiStatus.INVALID_STATE
@@ -290,7 +290,7 @@ def observe(publications, session, port=8765, width=960, height=540, run_file=No
                                             mapped.unmap()
                                         finally:
                                             del mapped
-                                valid = candidate is None or delivered
+                                valid = delivered
                         except Exception as frame_error:
                             error = str(frame_error)
                         finally:
@@ -308,8 +308,6 @@ def observe(publications, session, port=8765, width=960, height=540, run_file=No
                                 candidate = None
                                 previous_stage.destroy()
                             state.update(seconds=rendered)
-                            if not state["playing"] and converged and rendered == playhead:
-                                held = True
                             if state["error"] == "Render update pending. The last frame is retained.":
                                 state["error"] = None
                 if operation is not None and now-queued_at > 30 and not stalled:
