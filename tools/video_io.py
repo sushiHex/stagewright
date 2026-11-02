@@ -3,29 +3,34 @@ from pathlib import Path
 from collections import deque
 from tempfile import TemporaryFile
 
-import PyNvVideoCodec as nvc
-import warp as wp
-
-from image_io import ImageCodec
-from video_pixels import to_nv12
+from gpu_work import GpuPacer
 
 
 def encode_mp4(paths, destination, fps, *, keyframe_interval=None):
     """Encode a sequence; interval 1 makes repeated endpoint images independent keyframes."""
+    GpuPacer()
+    from image_io import ImageCodec
     with ImageCodec() as codec:
         return _encode_mp4(paths, destination, fps, codec, keyframe_interval=keyframe_interval)
 
 
 def _read_frames(paths, first, codec):
+    gpu = GpuPacer()
+    import warp as wp
     yield paths[0], first
     for start in range(1, len(paths), 8):
         batch = paths[start:start + 8]
         # Decode on the consumer stream; DLPack retains the native image buffer.
-        yield from zip(batch, codec.read_images(
-            batch, cuda_stream=wp.get_stream("cuda:0").cuda_stream))
+        with gpu.batch():
+            images = codec.read_images(batch, cuda_stream=wp.get_stream("cuda:0").cuda_stream)
+            wp.synchronize_device("cuda:0")
+        yield from zip(batch, images)
 
 
 def _encode_mp4(paths, destination, fps, codec, *, keyframe_interval=None):
+    gpu = GpuPacer()
+    import PyNvVideoCodec as nvc
+    from video_pixels import to_nv12
     paths = list(paths)
     if not paths:
         raise ValueError("No frames to encode")
@@ -33,7 +38,8 @@ def _encode_mp4(paths, destination, fps, codec, *, keyframe_interval=None):
         raise ValueError("Frame rate must divide the 90 kHz MP4 clock")
     if keyframe_interval is not None and keyframe_interval < 1:
         raise ValueError("Keyframe interval must be positive")
-    first = codec.read_rgb(paths[0])
+    with gpu.batch():
+        first = codec.read_rgb(paths[0])
     h, w = first.shape[:2]
     if w % 2 or h % 2:
         raise ValueError("H.264 4:2:0 needs even frame dimensions")
@@ -82,8 +88,10 @@ def _encode_mp4(paths, destination, fps, codec, *, keyframe_interval=None):
                     if rgb.shape != (h, w, 3):
                         raise ValueError(f"Frame dimensions differ: {path}")
                     pending_paths.append(path)
-                    collect(encoder.Encode(to_nv12(rgb)))
-                collect(encoder.EndEncode())
+                    with gpu.batch():
+                        collect(encoder.Encode(to_nv12(rgb)))
+                with gpu.batch():
+                    collect(encoder.EndEncode())
                 if pending_paths or len(packet_locations) != len(unique_paths):
                     raise RuntimeError("Encoder drain did not supply every unique frame")
                 for path in paths:
@@ -97,8 +105,10 @@ def _encode_mp4(paths, destination, fps, codec, *, keyframe_interval=None):
             for path, rgb in _read_frames(paths, first, codec):
                 if rgb.shape != (h, w, 3):
                     raise ValueError(f"Frame dimensions differ: {path}")
-                mux(encoder.Encode(to_nv12(rgb)))
-            mux(encoder.EndEncode())
+                with gpu.batch():
+                    mux(encoder.Encode(to_nv12(rgb)))
+            with gpu.batch():
+                mux(encoder.EndEncode())
         if packet_count != len(paths):
             raise RuntimeError(f"Encoded {packet_count} packets for {len(paths)} frames")
         muxer.Finalize()

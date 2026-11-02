@@ -144,6 +144,21 @@ and codec regressions. `tools/check_presentation.py` checks authored motion and 
 Warp filtered downsampling with `--supersample 2`; `--res` remains the output size. Optional task
 10e is deferred pending dataset acceptance and download approval.
 
+### Desktop GPU work
+
+Shared GPU workers use `tools/gpu_work.py`: Windows below-normal CPU priority, GPU
+idle scheduling priority and idle time between completed calls. `STAGEWRIGHT_GPU_DUTY` sets
+that wall-time budget (default `0.25`). It is not a hardware utilization ceiling.
+Keep the desktop default on this machine; coordinate any dedicated full-load run.
+PathTracing can complete a whole image inside one native call. Its existing sample
+settings and renderer clock remain unchanged; pacing applies after completed calls.
+Use the same pacing in private capture loops. VRAM checks and reservations still apply.
+
+Create `build/STOP_GPU` to stop these workers at the next checkpoint. The stop file
+also interrupts idle waits and blocks new workers. Remove it deliberately to allow
+work again. A native batch already running must finish or its process must be stopped.
+Do not change global GPU clocks, power limits or desktop settings for a job.
+
 ### Optional physics worker
 
 The owner approved NVIDIA tools for this project. `requirements-physics.txt` pins the optional

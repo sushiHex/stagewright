@@ -5,11 +5,13 @@
 import contextlib
 
 import numpy as np
+from gpu_work import GpuPacer
 
 
 @contextlib.contextmanager
 def open_renderer():
     """An ovrtx Renderer that is destroyed when the block ends."""
+    GpuPacer()
     import ovrtx
 
     rtx = ovrtx.Renderer()
@@ -87,21 +89,23 @@ def converge(rtx, products, ordinal, delta_time, max_steps, var="Color", *,
     reader = pixels if read_pixels is None else read_pixels
     waiting = set(products)
     images, status = {}, {}
+    gpu = GpuPacer()
     for k in range(max_steps):
         final = k == max_steps - 1
-        result = rtx.step(render_products=set(waiting), ordinal=ordinal, delta_time=delta_time)
-        for product in list(waiting):
-            fr = frame_of(result, product)
-            if fr is None:
-                continue
-            status[product] = (fr.progression, fr.converged)
-            if not fr.converged and not final:
-                continue
-            if capture and not fr.converged:
-                raise RuntimeError(f"{product}: did not converge within {max_steps} steps")
-            images[product] = reader(fr, f"{product}/{var}") if capture else None
-            waiting.discard(product)
-        del result
+        with gpu.batch():
+            result = rtx.step(render_products=set(waiting), ordinal=ordinal, delta_time=delta_time)
+            for product in list(waiting):
+                fr = frame_of(result, product)
+                if fr is None:
+                    continue
+                status[product] = (fr.progression, fr.converged)
+                if not fr.converged and not final:
+                    continue
+                if capture and not fr.converged:
+                    raise RuntimeError(f"{product}: did not converge within {max_steps} steps")
+                images[product] = reader(fr, f"{product}/{var}") if capture else None
+                waiting.discard(product)
+            del result
         if not waiting:
             break
     return images, status

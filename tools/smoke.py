@@ -88,6 +88,8 @@ def render():
 
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import rtx as rt
+    from gpu_work import GpuPacer
+    gpu = GpuPacer()
     from image_io import write_rgb
 
     FRAMES.mkdir(parents=True, exist_ok=True)
@@ -96,9 +98,10 @@ def render():
         for i in range(COUNT):
             ordinal = i + 2  # ordinal 1 is the initial load
             rt.seek(scene, ordinal, i / 24)
-            result = rtx.step(render_products={product}, ordinal=ordinal, delta_time=1 / 60)
-            px = rt.pixels(rt.frame_of(result, product, index=0), f"{product}/Color")
-            del result
+            with gpu.batch():
+                result = rtx.step(render_products={product}, ordinal=ordinal, delta_time=1 / 60)
+                px = rt.pixels(rt.frame_of(result, product, index=0), f"{product}/Color")
+                del result
             rgb = px[..., :3].astype(float)
             half = rgb.shape[1] // 2
             print(f"frame {i}: shape={px.shape} left={rgb[:, :half].mean():.1f} right={rgb[:, half:].mean():.1f}")

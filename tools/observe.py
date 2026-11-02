@@ -12,13 +12,10 @@ import sys
 import threading
 import time
 import urllib.parse
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from gpu_work import GpuPacer
 
 os.environ.setdefault("OVRTX_SKIP_USD_CHECK", "1")
-import ovstage
-import ovrtx
-import rtx as rt
-import ovstream
-from ovstream_utils.messaging import AppMessenger
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -52,6 +49,12 @@ def wrapper(source, directory, revision, width, height):
 
 
 def observe(publications, session, port=8765, width=960, height=540, run_file=None):
+    gpu = GpuPacer()
+    import ovstage
+    import ovrtx
+    import rtx as rt
+    import ovstream
+    from ovstream_utils.messaging import AppMessenger
     publications, session = publications.resolve(), session.resolve()
     session.mkdir(parents=True, exist_ok=False)
     commands = queue.SimpleQueue()
@@ -86,6 +89,7 @@ def observe(publications, session, port=8765, width=960, height=540, run_file=No
     # Keep known-terminal failures alive until after renderer destruction.
     retired = []
     tick, queued_at, next_render = time.monotonic(), 0.0, 0.0
+    was_connected = False
 
     def fatal(message):
         state["error"] = message
@@ -120,7 +124,12 @@ def observe(publications, session, port=8765, width=960, height=540, run_file=No
 
     try:
         while True:
+            gpu.check()
             now = time.monotonic()
+            connected = server.is_client_connected
+            if connected and not was_connected:
+                held = False
+            was_connected = connected
             if now - polled > .25:
                 polled = now
                 revision_dir = (publications / "revisions").resolve()
@@ -213,7 +222,7 @@ def observe(publications, session, port=8765, width=960, height=540, run_file=No
                                  "previous": (stage, metadata, ordinal, rendered)}
                     stage, metadata, ordinal, rendered = candidate_stage, next_metadata, 1, None
                     held = False
-            if operation is None and metadata is not None and not held and now >= next_render:
+            if connected and operation is None and metadata is not None and not held and now >= next_render:
                 try:
                     next_render = now + 1/30
                     requested = metadata["start"] if candidate is not None else playhead
@@ -249,11 +258,13 @@ def observe(publications, session, port=8765, width=960, height=540, run_file=No
                 else:
                     if result is not None:
                         valid = False
+                        converged = False
                         error = None
                         frame = None
                         try:
                             frame = rt.frame_of(result, metadata["product"])
                             if frame is not None:
+                                converged = frame.converged
                                 delivered = True
                                 if metadata["var"] not in frame.render_vars:
                                     raise ValueError("the frame has no streaming image")
@@ -285,6 +296,7 @@ def observe(publications, session, port=8765, width=960, height=540, run_file=No
                         finally:
                             del frame, result, pending, operation
                             pending, operation = None, None
+                            next_render = max(next_render, gpu.ready_at(queued_at))
                         if error is not None:
                             restore_candidate(f"Frame not available: {error}")
                         elif valid:
@@ -296,6 +308,8 @@ def observe(publications, session, port=8765, width=960, height=540, run_file=No
                                 candidate = None
                                 previous_stage.destroy()
                             state.update(seconds=rendered)
+                            if not state["playing"] and converged and rendered == playhead:
+                                held = True
                             if state["error"] == "Render update pending. The last frame is retained.":
                                 state["error"] = None
                 if operation is not None and now-queued_at > 30 and not stalled:
