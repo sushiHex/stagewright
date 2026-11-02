@@ -8,8 +8,11 @@ import hashlib
 import importlib.metadata
 import json
 from pathlib import Path
+import sys
 
 import numpy as np
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from gpu_work import GpuPacer
 
 
 def read_poses(physics):
@@ -34,6 +37,7 @@ def read_poses(physics):
 
 
 def simulate(scene_file, output, steps, fps):
+    gpu = GpuPacer()
     import ovphysx
     import ovstage
 
@@ -62,8 +66,10 @@ def simulate(scene_file, output, steps, fps):
         physics.wait_task(physics.attach_ovstage(stage, read_ordinal=1))
         attached = True
         for _ in range(steps):
-            physics.step_sync(1 / fps)
-            poses, pose_devices = read_poses(physics)
+            with gpu.batch():
+                physics.step_sync(1 / fps)
+                poses, pose_devices = read_poses(physics)
+                physics.wait_all()
             devices.update(pose_devices)
             current_paths = sorted(poses)
             if paths is None:
@@ -75,7 +81,6 @@ def simulate(scene_file, output, steps, fps):
             if not np.isfinite(sample).all():
                 raise RuntimeError("Non-finite simulation pose")
             samples.append(sample)
-            physics.wait_all()
     finally:
         try:
             if physics is not None:

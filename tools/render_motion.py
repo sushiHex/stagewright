@@ -81,6 +81,8 @@ def render(frames, res, spp, out_dir, max_steps, scene=SCENE, product=PRODUCT,
     fps, count = motion_timing(product, fps, count)
     loop = loop_enabled(product, loop)
     check_frame_directory(scene, product, fps, count, loop, out_dir)
+    from gpu_work import GpuPacer
+    GpuPacer()
     from image_io import ImageCodec
     from image_compute import RGBDownsampler
 
