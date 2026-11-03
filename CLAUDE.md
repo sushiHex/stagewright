@@ -149,6 +149,8 @@ Warp filtered downsampling with `--supersample 2`; `--res` remains the output si
 Shared GPU workers use `tools/gpu_work.py`: Windows below-normal CPU priority, GPU
 idle scheduling priority and idle time between completed calls. `STAGEWRIGHT_GPU_DUTY` sets
 that wall-time budget (default `0.25`). It is not a hardware utilization ceiling.
+Windows workers use at most four allowed logical CPUs, or half the system CPUs on smaller
+systems. The affinity limit applies before native initialization and is inherited by children.
 Keep the desktop default on this machine; coordinate any dedicated full-load run.
 PathTracing can complete a whole image inside one native call. Its existing sample
 settings and renderer clock remain unchanged; pacing applies after completed calls.

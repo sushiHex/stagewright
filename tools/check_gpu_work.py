@@ -18,6 +18,14 @@ class Clock:
 
 
 def main():
+    for process_mask, system_mask, expected in [
+        (0xffffffff, 0xffffffff, 0xf), (0xf, 0xffffffff, 0xf),
+        (0xf0, 0xffffffff, 0xf0), (0xf, 0xf, 0x3), (0x3, 0xf, 0x3),
+        (0x3, 0x3, 0x1), (0x1, 0x1, 0x1),
+    ]:
+        actual = gpu_work._desktop_cpu_mask(process_mask, system_mask)
+        assert actual == expected
+        assert gpu_work._desktop_cpu_mask(actual, system_mask) == actual
     with TemporaryDirectory() as directory:
         stop = Path(directory) / 'STOP_GPU'
         clock = Clock()

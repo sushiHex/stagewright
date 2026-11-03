@@ -192,7 +192,7 @@ def observe(publications, session, port=8765, width=960, height=540, run_file=No
                 playhead = state["start"] + (playhead-state["start"]+now-tick) % span
             tick = now
             # A candidate never changes the state that describes the last displayed frame.
-            if (operation is None and candidate is None and desired in available
+            if (connected and operation is None and candidate is None and desired in available
                     and desired != state["selected_revision"] and desired not in rejected):
                 candidate_stage = None
                 try:
