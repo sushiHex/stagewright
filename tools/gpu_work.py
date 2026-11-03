@@ -9,6 +9,14 @@ STOP_FILE = Path(__file__).resolve().parents[1] / "build/STOP_GPU"
 _background_set = False
 
 
+def _desktop_cpu_mask(process_mask, system_mask):
+    if not process_mask or not system_mask:
+        raise RuntimeError("Cannot determine worker CPU affinity")
+    count = max(1, min(4, system_mask.bit_count() // 2))
+    allowed = [1 << n for n in range(process_mask.bit_length()) if process_mask & (1 << n)]
+    return sum(allowed[:count])
+
+
 def _background_priority():
     global _background_set
     if os.name != "nt" or _background_set:
@@ -22,6 +30,18 @@ def _background_priority():
     kernel.SetPriorityClass.restype = wintypes.BOOL
     # Lower CPU priority without lowering memory or I/O priority.
     if not kernel.SetPriorityClass(kernel.GetCurrentProcess(), 0x00004000):
+        raise ctypes.WinError(ctypes.get_last_error())
+    mask_type = ctypes.c_size_t
+    kernel.GetProcessAffinityMask.argtypes = [wintypes.HANDLE, ctypes.POINTER(mask_type), ctypes.POINTER(mask_type)]
+    kernel.GetProcessAffinityMask.restype = wintypes.BOOL
+    kernel.SetProcessAffinityMask.argtypes = [wintypes.HANDLE, mask_type]
+    kernel.SetProcessAffinityMask.restype = wintypes.BOOL
+    process_mask, system_mask = mask_type(), mask_type()
+    if not kernel.GetProcessAffinityMask(kernel.GetCurrentProcess(), ctypes.byref(process_mask), ctypes.byref(system_mask)):
+        raise ctypes.WinError(ctypes.get_last_error())
+    # Bound native CPU work before initialization; inherited masks do not shrink again.
+    allowed = _desktop_cpu_mask(process_mask.value, system_mask.value)
+    if not kernel.SetProcessAffinityMask(kernel.GetCurrentProcess(), allowed):
         raise ctypes.WinError(ctypes.get_last_error())
     scheduler = ctypes.WinDLL("gdi32").D3DKMTSetProcessSchedulingPriorityClass
     scheduler.argtypes = [wintypes.HANDLE, ctypes.c_int]
