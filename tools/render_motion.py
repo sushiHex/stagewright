@@ -13,6 +13,7 @@ import argparse
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -76,7 +77,7 @@ def warmup_frames(start, count, loop):
 
 def render(frames, res, spp, out_dir, max_steps, scene=SCENE, product=PRODUCT,
            fps=None, count=None, supersample=2, loop=None, cpu_readback=False,
-           sample_batch=stills.DEFAULT_SAMPLE_BATCH):
+           sample_batch=stills.DEFAULT_SAMPLE_BATCH, snapshot_poses=False):
     frames = list(frames)
     fps, count = motion_timing(product, fps, count)
     loop = loop_enabled(product, loop)
@@ -103,6 +104,27 @@ def render(frames, res, spp, out_dir, max_steps, scene=SCENE, product=PRODUCT,
     if supersample > 1:
         downsampler = RGBDownsampler(supersample)
         read_pixels = downsampler.capture_cpu if cpu_readback else downsampler.capture
+    if snapshot_poses:
+        # Sample in the author process before render overrides can change source timing.
+        schedule = [(f, f"{f:04d}.png") for f in frames]
+        if loop and frames == list(range(count)):
+            schedule += [(f, f"_loop_{f:04d}.png") for f in range(min(2, count))]
+        with tempfile.TemporaryDirectory(prefix="_poses_", dir=out_dir) as temporary:
+            with rt.open_renderer() as rtx, ImageCodec() as codec:
+                for index, (f, filename) in enumerate(schedule):
+                    pose = Path(temporary) / f"pose_{index}.usda"
+                    subprocess.run([sys.executable, "-I", str(Path(__file__).with_name("sample_transforms.py")),
+                                    str(scene), str(pose), "--seconds", str(f / fps),
+                                    "--render-layer", str(layer.resolve())], check=True)
+                    with rt.loaded_scene(rtx, "pose", pose):
+                        rtx.reset(0.0)
+                        images, status = rt.converge(rtx, [product], 1, delta_time=1 / fps,
+                                                    max_steps=max_steps, read_pixels=read_pixels)
+                    if product not in images:
+                        raise RuntimeError(f"frame {f}: no image captured (last status {status.get(product)})")
+                    codec.write_rgb(out_dir / filename, images[product])
+                    print(f"frame {f} -> {out_dir / filename}", flush=True)
+        return
     with rt.open_renderer() as rtx, rt.loaded_scene(rtx, "motion", layer) as loaded, ImageCodec() as codec:
         # Ordinal 1 is the initial load; each scheduled pose gets the next ordinal.
         for ordinal, (f, filename) in enumerate(schedule, start=2):
@@ -177,6 +199,8 @@ def parse_args(argv=None):
                     help="sample batch limit; uses a divisor of --spp; 1 retains the reference launch schedule")
     ap.add_argument("--cpu-readback", action="store_true",
                     help="compatibility/reference path: filter after CPU readback")
+    ap.add_argument("--snapshot-poses", action="store_true",
+                    help="sample transform-only animation in the author process; load a fresh stage per pose")
     ap.add_argument("--out", type=Path,
                     help="frame directory; custom/preview videos are written here too")
     ap.add_argument("--max-steps", type=int, default=0, help="step cap per frame; default 4 x spp + 64")
@@ -243,7 +267,8 @@ def main():
     a = parse_args()
     if not a.no_render:
         render(a.frames, a.res, a.spp, a.out.resolve(), a.max_steps or 4 * max(a.spp, 64) + 64,
-               a.scene.resolve(), a.product, a.fps, a.count, a.supersample, a.loop, a.cpu_readback, a.sample_batch)
+               a.scene.resolve(), a.product, a.fps, a.count, a.supersample, a.loop, a.cpu_readback, a.sample_batch,
+               a.snapshot_poses)
     if a.encode:
         encode(a.out.resolve(), a.gif_width, a.gif_fps, a.gif, a.fps, a.count, a.product, a.scene.resolve(), a.loop)
 
