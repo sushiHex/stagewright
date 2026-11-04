@@ -18,8 +18,7 @@ NVIDIA PhysX results; surrounding buildings are static additions.
 |---|---|
 | ![The completed procedural workshop in its closed pose](docs/assets/courtyard-closed.png) | ![The same workshop with roof and wall raised by the original solver recording](docs/assets/courtyard-open.png) |
 
-This is an experimental presentation study. Its generators are not yet packaged with
-the quickstart below, which builds the shipped wind-tunnel model.
+The quickstart builds the wind-tunnel model. COURTYARD shows the latest development work.
 
 <details>
 <summary>Earlier wind-tunnel study</summary>
