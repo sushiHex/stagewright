@@ -6,6 +6,24 @@ Describe an environment to a coding agent, which creates or edits the Python gen
 Run the CLI tools to build, validate and render the scene with NVIDIA's tools.
 The prompt shapes the code; the code regenerates the world.
 
+## Latest study: COURTYARD
+
+A coding agent builds a procedural OpenUSD workshop from prompts. The preview shows
+eight saved construction stages followed by recorded NVIDIA PhysX motion. One motor
+opens the linked roof and wall; the added buildings stay static.
+
+![Eight saved construction stages followed by recorded roof and wall motion](docs/assets/courtyard-story.gif)
+
+| Closed workshop | Recorded open pose |
+|---|---|
+| ![The completed procedural workshop in its closed pose](docs/assets/courtyard-closed.png) | ![The same workshop with roof and wall raised by the original solver recording](docs/assets/courtyard-open.png) |
+
+This is an experimental presentation study. Its generators are not yet packaged with
+the quickstart below, which builds the shipped wind-tunnel model.
+
+<details>
+<summary>Earlier wind-tunnel study</summary>
+
 **Seamless 360 tour**
 
 https://github.com/user-attachments/assets/bacc0ef1-b90b-4d65-8be2-4a333056c435
@@ -18,6 +36,8 @@ https://github.com/user-attachments/assets/bacc0ef1-b90b-4d65-8be2-4a333056c435
 | Blueprint camera pose and lens, with the CFD flow domain outlined | Nozzle flange, seams and A-frame supports |
 | ![Wake-side view toward the collector](models/wind_tunnel/media/wake.jpg) | ![Lighting QC spheres beside the model](models/wind_tunnel/media/qc_main.jpg) |
 | Beside the model, looking downstream at the collector | Lighting QC: 18% grey, chrome and clear-coated paint spheres |
+
+</details>
 
 [Quickstart](#quickstart) · [Technical guide](models/wind_tunnel/docs/guide.md) · [Live USD guide](docs/live-viewer.md)
 
