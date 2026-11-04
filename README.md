@@ -2,15 +2,15 @@
 
 **Prompt-based procedural environments. OpenUSD. A 100% NVIDIA core scene pipeline.**
 
-Describe an environment to a coding agent, which creates or edits the Python generators.
-Run the CLI tools to build, validate and render the scene with NVIDIA's tools.
+Describe an environment. A coding agent writes editable Python generators.
+NVIDIA tools author OpenUSD, validate the scene, render with RTX and export the media.
 The prompt shapes the code; the code regenerates the world.
 
 ## Latest study: COURTYARD
 
-A coding agent builds a procedural OpenUSD workshop from prompts. The preview shows
-eight saved construction stages followed by recorded NVIDIA PhysX motion. One motor
-opens the linked roof and wall; the added buildings stay static.
+Eight saved OpenUSD stages show a workshop take shape. One motor then lifts the
+roof and wall through simulated joints, opening a proving court. The motion replays
+NVIDIA PhysX results; surrounding buildings are static additions.
 
 ![Eight saved construction stages followed by recorded roof and wall motion](docs/assets/courtyard-story.gif)
 
@@ -46,8 +46,8 @@ https://github.com/user-attachments/assets/bacc0ef1-b90b-4d65-8be2-4a333056c435
 > Create an open-jet automotive wind tunnel with a honeycomb nozzle, a lit plenum hall,
 > a turntable and five-belt floor, and a bell-mouth collector.
 
-The first model builds that wind-tunnel environment from source. An Ahmed-style reference body
-is added only in the presentation layer.
+The wind-tunnel generator authors the hall, hardware and lighting in OpenUSD.
+An Ahmed-style reference body is composed only into the presentation layer.
 
 ## 100% NVIDIA across the core scene pipeline
 
@@ -65,15 +65,15 @@ is added only in the presentation layer.
 Python, uv and NumPy support the workflow; the coding agent supplies the prompt-to-code step.
 The optional GIF fallback uses FFmpeg. The NVIDIA claim covers the core scene and media stages above.
 
-## Checked, with clear boundaries
+## Verification
 
-The shipped wind-tunnel presentation was checked for composition, transforms, bounds, camera
-framing and rendered loop continuity. Its strict fit report records all 29 checks passing.
+The shipped wind tunnel passes all 29 fit checks. Composition, transforms, bounds,
+camera framing and rendered loop continuity were checked.
 See the [fit report](models/wind_tunnel/docs/fit-check.md) and
 [verification details](models/wind_tunnel/docs/guide.md#what-was-verified).
 
-This is a conceptual presentation environment. Execution inside the external blueprint application
-and aerodynamic behavior are unverified. Fine-pattern shimmer can remain in motion.
+These are conceptual presentation environments. Execution in the blueprint application
+and aerodynamic behavior remain unverified. Fine details can shimmer in motion.
 
 ## Quickstart
 
@@ -91,7 +91,7 @@ uv pip install --python .venv/Scripts/python.exe -r requirements.txt
 .venv/Scripts/python.exe tools/render.py --products Hero
 ```
 
-The hero lands in `build/stills/hero.png`. Keep authoring and rendering in separate processes.
+The render is saved to `build/stills/hero.png`. Keep authoring and rendering in separate processes.
 Use the [technical guide](models/wind_tunnel/docs/guide.md#build-it) for motion, validation,
 render controls and [blueprint integration](models/wind_tunnel/docs/guide.md#using-the-override).
 
