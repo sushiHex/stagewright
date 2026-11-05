@@ -8,10 +8,17 @@
 # under it. Geometry is generated through tools/meshlib.py and authored through usdex.core.
 # Textures are computed in Warp and written through nvImageCodec (no downloaded assets), and every material is
 # a UsdPreviewSurface whose textures are referenced by paths relative to the asset.
+import argparse
 import math
 import re
 import sys
 from pathlib import Path
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Build the environment and check containment.")
+    parser.add_argument("command", nargs="?", choices=("build", "check"), default="build",
+                        help="build and check (default), or check the existing environment")
+    args = parser.parse_args()
 
 import numpy as np
 
@@ -870,6 +877,6 @@ def check():
 
 
 if __name__ == "__main__":
-    if sys.argv[1:] != ["check"]:
+    if args.command == "build":
         build()
     sys.exit(0 if check() else 1)

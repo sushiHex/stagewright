@@ -4,10 +4,14 @@
 #
 # Adds what must never live in the environment payload: the Ahmed reference body, the lighting
 # QC spheres, cameras, a BasisCurves ghost of the flow domain, and one RenderProduct per camera.
+import argparse
 import math
 import re
 import sys
 from pathlib import Path
+
+if __name__ == "__main__":
+    argparse.ArgumentParser(description="Build both presentation scenes and check their cameras.").parse_args()
 
 import numpy as np
 

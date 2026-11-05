@@ -42,9 +42,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 def wrapper(source, directory, revision, width, height):
     destination = directory / f"view-{revision:04d}.usda"
-    result = subprocess.run([sys.executable, str(ROOT / "tools/viewer_scene.py"),
-                             str(source), str(destination), "--width", str(width),
-                             "--height", str(height)], check=True, capture_output=True, text=True)
+    try:
+        result = subprocess.run([sys.executable, str(ROOT / "tools/viewer_scene.py"),
+                                 str(source), str(destination), "--width", str(width),
+                                 "--height", str(height)], check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError as error:
+        reason = error.stderr.strip().splitlines()
+        detail = reason[-1] if reason else f"child exited with status {error.returncode}"
+        raise RuntimeError(f"Cannot prepare viewer scene: {detail}") from None
     return destination, json.loads(result.stdout)
 
 
