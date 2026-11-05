@@ -1,9 +1,30 @@
 # Handoff
 
-State of the repo as of 2026-10-30, for the next session picking it up cold. Read `CLAUDE.md` first,
+State of the repo as of 2026-11-05, for the next session picking it up cold. Read `CLAUDE.md` first,
 then `docs/plan.md`, then this file.
 
 ## Where things stand
+
+- Inspection hall source is under `models/inspection_hall/`. Five files reuse the shipped
+  COURTYARD helpers and existing engine. A fresh shipped-source powered/control baseline passes
+  the original opening condition. One clean construction trial then produced a coupled roof and
+  inspection deck: its first candidate failed; the self-revised second candidate meets the unchanged
+  declared opening, deck, access and hold conditions. The matched disabled control stays closed.
+  Original inputs, first result, revisions and independent measurements remain under ignored
+  `build/experiments/inspection-hall-001/`. Requested gpt-6-astra/max; served model and effective
+  effort remain null. No execution transcript was returned. Retain the context report's observation
+  limits; do not claim fully audited instruction ingestion or filesystem confinement.
+
+- Source packaging reproduces the evaluated geometry, physics and camera. Native OpenUSD
+  validation has no findings. The separate NVIDIA default preset reports grouping-type, mesh-normal
+  and ASCII-array findings, including new content; the model guide discloses them. Do not claim a
+  default-preset pass. The result is unloaded rigid-body operation, not structural or occupied-access
+  proof. New fixed-view media stays local in `build/candidates/inspection-hall-001/`; selected native
+  poses pass framing. The local review.html and motion.mp4 are ready: two authored passes, a separate
+  recorded deployed state, forward motion and pose-derived indicators. Native decode, bookend holds,
+  source timing, projection and player-state checks pass. Browser interaction remains unverified: the
+  native computer-use pipe is unavailable and the browser connector fails before page display.
+  Accepted public media is unchanged. PR #50, milestone 6 and Issues #46 through #49 track delivery.
 
 - Owner feedback: ASCENT is an interesting, higher-quality scene than the earlier result. Camera movement feels too stop-and-go; use smoother transitions in a future presentation pass. The car and field slice feel out of place in the hall story, but are a useful integration test. Keep the cached case private and separate from the main scene narrative. The owner subsequently approved the focused source commit, PR and merge, plus a separate smoother hall-only presentation. The new film stays local until visual acceptance.
 

@@ -6,6 +6,19 @@ fix concrete failures with small local changes and use only the checks needed to
 Render manifests, validation orchestration, broad CI/support matrices and material migrations
 are not planned requirements. Expand only for a demonstrated use. See `CLAUDE.md`.
 
+## Inspection hall
+
+The shipped COURTYARD source now has a two-level inspection-hall variant under
+`models/inspection_hall/`. One motor opens the enclosure and deploys a deck through
+passive joints. The model reuses COURTYARD helpers and the existing engine.
+
+Fresh powered and motor-disabled runs reproduce the baseline opening condition.
+The new variant meets its declared opening, deck, access and hold conditions from
+recorded solver poses; its matched disabled control stays closed. This is an
+unloaded rigid-body result, not a structural or occupied-access test. The guide
+provides direct build, simulation and measurement commands. Keep new presentation
+media local until visual acceptance. Issues #46 through #49 track this delivery.
+
 ## Finalized experiment: the transforming proving hall
 
 The final Fable -> Astra -> Fable -> Astra exchange agrees on one story:

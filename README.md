@@ -19,6 +19,8 @@ NVIDIA PhysX results; surrounding buildings are static additions.
 | ![The completed procedural workshop in its closed pose](docs/assets/courtyard-closed.png) | ![The same workshop with roof and wall raised by the original solver recording](docs/assets/courtyard-open.png) |
 
 Build COURTYARD from source with the [model guide](models/courtyard/README.md).
+Also build the [inspection hall](models/inspection_hall/README.md): one motor opens
+the roof and deploys an elevated deck through passive joints.
 
 <details>
 <summary>Earlier wind-tunnel study</summary>
