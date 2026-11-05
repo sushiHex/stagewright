@@ -11,7 +11,14 @@ MEDIA = [MODEL / "media" / f"{name}.jpg" for name in ("hero", "detail", "main", 
 MEDIA += [MODEL / "media" / f"{name.lower()}.mp4" for name in MOTION_SETTINGS]
 MODEL_DOCS = [MODEL / "docs" / name for name in ("assets.md", "fit-check.md", "guide.md")]
 OVERRIDE = MODEL / "scenes" / "blueprint_override.usda"
-README_VISUAL = ROOT / "docs" / "assets" / "nvidia-pipeline.svg"
+README_ASSETS = [ROOT / "docs" / "assets" / name for name in
+                 ("nvidia-pipeline.svg", "courtyard-story.gif", "courtyard-closed.png", "courtyard-open.png")]
+LIVE_GUIDE = ROOT / "docs" / "live-viewer.md"
+TOOLS = """build_env build_media build_present build_share check_compute check_gpu_work
+check_loop check_presentation engine field_view fit_check gpu_work image_compute image_io
+mesh_compute meshlib observe physics_usd probe_mechanism project_paths publish render
+render_motion rtx sample_transforms setup_viewer simulate smoke texture_compute video_io
+video_pixels viewer_scene""".split()
 
 INDEX = """<!doctype html>
 <html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -110,12 +117,16 @@ def main():
     if not (ROOT / "LICENSE").read_text().startswith("MIT License\n"):
         raise RuntimeError("Expected the selected MIT licence")
     OUT.mkdir(parents=True, exist_ok=True)
-    review = [ROOT / "LICENSE", ROOT / "README.md", README_VISUAL, *MEDIA, *MODEL_DOCS, OVERRIDE]
+    review = [ROOT / "LICENSE", ROOT / "README.md", *README_ASSETS, LIVE_GUIDE, *MEDIA, *MODEL_DOCS, OVERRIDE]
     texture_names = ("belt", "concrete", "epoxy", "honeycomb", "perf", "turntable")
     textures = [MODEL / "assets" / "textures" / f"{name}_{kind}.png"
                 for name in texture_names for kind in ("color", "normal", "orm")]
-    sources = [*review, ROOT / "CLAUDE.md", ROOT / "requirements.txt", ROOT / ".gitignore", ROOT / ".gitattributes",
-               *(ROOT / "docs").glob("*.md"), *(ROOT / "tools").glob("*.py"),
+    sources = [*review, ROOT / "CLAUDE.md", ROOT / ".gitignore", ROOT / ".gitattributes",
+               *(ROOT / name for name in ("requirements.txt", "requirements-fields.txt",
+                                         "requirements-physics.txt", "requirements-viewer.txt")),
+               *(ROOT / "docs" / name for name in ("handoff.md", "plan.md", "recorded-pose-capture.md")),
+               *(ROOT / "tools" / f"{name}.py" for name in TOOLS),
+               *(ROOT / "viewer" / name for name in ("app.js", "empty.usda", "index.html")),
                MODEL / "assets" / "test_section.usda", *textures,
                MODEL / "scenes" / "present.usda", MODEL / "scenes" / "present_payload.usda"]
     for result in (archive("stagewright-review", review), archive("stagewright-source", sources)):
