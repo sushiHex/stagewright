@@ -124,6 +124,49 @@ def rect_dist(x, z, xr, zr):
     return np.hypot(dx, dz)
 
 
+def point_segment_dist(p, a, b):
+    """Distance to finite segments, including zero-length segments."""
+    edge = b - a
+    length2 = (edge * edge).sum(axis=-1)
+    dot = ((p - a) * edge).sum(axis=-1)
+    t = np.divide(dot, length2, out=np.zeros_like(dot, dtype=float), where=length2 > 0)
+    return np.linalg.norm(p - (a + np.clip(t, 0, 1)[..., None] * edge), axis=-1)
+
+
+def projected_clearance(tris, xr, zr):
+    """Minimum distance between projected mesh triangles and an X-Z rectangle."""
+    p = np.asarray(tris, float)[..., (0, 2)]
+    if not len(p) or not np.isfinite(p).all():
+        raise ValueError("Jet clearance requires finite mesh triangles")
+    a, b = p, np.roll(p, -1, axis=1)
+    edge = b - a
+    lo, hi = np.array((xr[0], zr[0])), np.array((xr[1], zr[1]))
+    # Slab clipping catches edges crossing the rectangle, including flat roofs.
+    enter, leave = np.zeros(p.shape[:2]), np.ones(p.shape[:2])
+    hit = np.ones(p.shape[:2], dtype=bool)
+    for axis in (0, 1):
+        moving = edge[..., axis] != 0
+        hit &= moving | ((a[..., axis] >= lo[axis]) & (a[..., axis] <= hi[axis]))
+        first = np.divide(lo[axis] - a[..., axis], edge[..., axis],
+                          out=np.full(p.shape[:2], -np.inf), where=moving)
+        last = np.divide(hi[axis] - a[..., axis], edge[..., axis],
+                         out=np.full(p.shape[:2], np.inf), where=moving)
+        enter = np.maximum(enter, np.minimum(first, last))
+        leave = np.minimum(leave, np.maximum(first, last))
+    if np.any(hit & (enter <= leave)):
+        return 0.0
+    # A rectangle fully inside a triangle has no boundary crossing.
+    cross = edge[..., 0] * (lo[1] - a[..., 1]) - edge[..., 1] * (lo[0] - a[..., 0])
+    area = edge[:, 0, 0] * edge[:, 1, 1] - edge[:, 0, 1] * edge[:, 1, 0]
+    if np.any((area != 0) & ((cross >= 0).all(axis=1) | (cross <= 0).all(axis=1))):
+        return 0.0
+    best = float(rect_dist(p[..., 0], p[..., 1], xr, zr).min())
+    for x in xr:
+        for z in zr:
+            best = min(best, float(point_segment_dist(np.array((x, z)), a, b).min()))
+    return best
+
+
 # -------------------------------------------------------------------------------------------------
 # 1. Override layer and composition
 # -------------------------------------------------------------------------------------------------
@@ -437,7 +480,7 @@ def check_environment(stage, dom_lo, dom_hi):
     # Jet window: project the domain cross-section along Y and measure against the nozzle and collector openings.
     md.append("\nJet window (the domain's X-Z cross-section, extruded along Y, against the tunnel hardware):\n")
     md.append("| Part | Y faces (cm) | gap along Y to the domain (cm) | min X-Z clearance, domain section to "
-              "the opening (cm) | vertices inside the section |\n|---|---|---|---|---|")
+              "the opening (cm) | section inside mesh bounds |\n|---|---|---|---|---|")
     jet_ok = True
     missing = []
     for name, face in (("Nozzle", "min"), ("Collector", "max")):
@@ -446,17 +489,18 @@ def check_environment(stage, dom_lo, dom_hi):
             md.append(f"| {name} | not found | | | |")
             missing.append(name)
             continue
-        P = v["pts"]
-        dist = rect_dist(P[:, 0], P[:, 2], (dom_lo[0], dom_hi[0]), (dom_lo[2], dom_hi[2]))
-        n_in = int((dist == 0).sum())
+        clearance = projected_clearance(mesh_tris(v["prim"], UsdGeom.XformCache()),
+                                        (dom_lo[0], dom_hi[0]), (dom_lo[2], dom_hi[2]))
+        contained = (v["lo"][0] < dom_lo[0] and v["hi"][0] > dom_hi[0]
+                     and v["hi"][2] > dom_hi[2])
         gap_y = v["lo"][1] - dom_hi[1] if face == "min" else dom_lo[1] - v["hi"][1]
-        md.append(f"| {name} | {v['lo'][1]:.1f}..{v['hi'][1]:.1f} | {gap_y:.1f} | {dist.min():.1f} | {n_in} |")
-        jet_ok &= gap_y > 0 and n_in == 0 and dist.min() > 0
+        md.append(f"| {name} | {v['lo'][1]:.1f}..{v['hi'][1]:.1f} | {gap_y:.1f} | {clearance:.1f} | {contained} |")
+        jet_ok &= gap_y > 0 and contained and clearance > 0
     md.append("\nThe Y gap is measured from the nozzle mesh's most downstream point (the rolled lip) and from the "
-              "collector mesh's most upstream point. The X-Z clearance is the distance from each mesh vertex to the "
-              "domain's X-Z rectangle, i.e. vertex-based: chords on the rounded corners sit inside the true arc by at "
-              "most the sagitta, well under 1 mm at the current tessellation. Both parts must be found for this check "
-              "to pass.")
+              "collector mesh's most upstream point. The X-Z clearance is measured from the projected mesh triangles "
+              "to the domain section, including straight spans and crossings. The section must also fit within each "
+              "part's width and height. The domain's ground offset below the open profiles is allowed. Both parts "
+              "must be found for this check to pass.")
     record("Domain sits inside the jet (nozzle exit and collector openings, with clearance)",
            "FAIL" if missing else ("PASS" if jet_ok else "FAIL"),
            f"not found: {', '.join(missing)}" if missing else "")
@@ -560,7 +604,7 @@ def check_car(stage, parts, dom_lo, dom_hi):
     axle_f = np.mean(centres_y[2:]) if len(centres_y) == 4 else None
     mid_wb = (axle_r + axle_f) / 2 if axle_r is not None else None
     bbox_cy = (lo[1] + hi[1]) / 2
-    inner_track = min(min(abs(a[0]), abs(b[0])) for a, b in wb.values()) if wb else None
+    inner_track = min(min(abs(a[0]), abs(b[0])) for a, b in wb.values()) if len(wb) == 4 else None
     if mid_wb is not None:
         md.append(f"\n- Axles at Y {axle_r:.1f} (rear) and {axle_f:.1f} (front): wheelbase {axle_f - axle_r:.1f}, "
                   f"mid-wheelbase **Y {mid_wb:.1f}**. Bounding-box centre **Y {bbox_cy:.1f}**, X {(lo[0] + hi[0]) / 2:.1f}. "
@@ -569,7 +613,7 @@ def check_car(stage, parts, dom_lo, dom_hi):
 
     # Floor, turntable and belt from our geometry.
     slab, tt, ring, belt, frame = (by_name(parts, n) for n in
-                                   ("Slab", "Turntable", "TurntableRing", "RollingRoadBelt", "RollingRoadFrame"))
+                                   ("Slab", "Turntable", "TurntableRing", "RollingRoadBelt", "RollingRoadPlates"))
     if slab is not None:
         md.append(f"- Lowest car point Z {lo[2]:.2f} against the floor top Z {slab['hi'][2]:.2f}.")
     if ring is not None and tt is not None:
@@ -585,12 +629,14 @@ def check_car(stage, parts, dom_lo, dom_hi):
         off_mid = (mid_wb - cy) if mid_wb is not None else None
         off_box = bbox_cy - cy
         centred = off_mid is not None and abs(off_mid) <= 10.0
-        md.append(f"- Turntable centre against the car: mid-wheelbase is {off_mid:+.1f} from it, bounding-box centre "
-                  f"{off_box:+.1f}. A turntable is centred on the car (plan, 'Floor'), so this is **off by about "
-                  f"{abs(off_mid):.0f} cm**." if off_mid is not None and not centred else
-                  f"- Turntable centre against the car: mid-wheelbase offset {off_mid:+.1f}, bounding-box centre offset "
-                  f"{off_box:+.1f}.")
-        record("Turntable centred on the car (mid-wheelbase within 10 cm)", "PASS" if centred else "FAIL",
+        if off_mid is None:
+            md.append("- Turntable centre against the car: wheel groups are incomplete; mid-wheelbase is unavailable.")
+        else:
+            md.append(f"- Turntable centre against the car: mid-wheelbase offset {off_mid:+.1f}, bounding-box centre "
+                      f"offset {off_box:+.1f}." + (f" The turntable is off by about **{abs(off_mid):.0f} cm**."
+                                                if not centred else ""))
+        record("Turntable centred on the car (mid-wheelbase within 10 cm)",
+               "NOT CHECKED" if off_mid is None else ("PASS" if centred else "FAIL"),
                f"turntable Y {cy:.1f}, mid-wheelbase Y {mid_wb:.1f}" if mid_wb is not None else "")
         tyre_low = min(a[2] for a, b in wb.values()) if wb else lo[2]
         md.append(f"- Tyre contact: lowest tyre point Z {tyre_low:.2f}, turntable disc top Z {tt['hi'][2]:.2f}: the "
@@ -609,8 +655,9 @@ def check_car(stage, parts, dom_lo, dom_hi):
                      f"{under - belt['hi'][2]:.1f})." if under is not None else ""))
         covers = belt["lo"][1] <= lo[1] and belt["hi"][1] >= hi[1]
         md.append(f"- The belt spans the car's full length (Y {lo[1]:.1f}..{hi[1]:.1f}): {covers}.")
-        record("Belt runs between the wheels and spans the car", "PASS" if (inner_track is None or inner_track > fr_hw)
-               and covers else "FAIL")
+        record("Belt runs between the wheels and spans the car",
+               "FAIL" if not covers else ("NOT CHECKED" if inner_track is None else
+                                         ("PASS" if inner_track > fr_hw else "FAIL")))
 
     # Wheel-drive belts: each tyre's contact patch (its points within 2 cm of its lowest point) must lie
     # on one of the four wheel belts. The four units are one mesh; split its points by side and axle.
@@ -649,7 +696,8 @@ def check_car(stage, parts, dom_lo, dom_hi):
                   "wheelbase; a real five-belt rolling road moves them to suit each car.")
         record("Each tyre contact patch lies on a wheel-drive belt", "PASS" if all_on else "FAIL",
                f"{len(units)} units")
-    return {"lo": lo, "hi": hi, "mid_wb": mid_wb, "bbox_cy": bbox_cy}
+    return {"lo": lo, "hi": hi, "mid_wb": mid_wb, "bbox_cy": bbox_cy,
+            "belt_half_len": float((belt["hi"][1] - belt["lo"][1]) / 2) if belt is not None else None}
 
 
 # -------------------------------------------------------------------------------------------------
@@ -675,6 +723,15 @@ def point_tri_dist(p, tris):
     """Exact distance from point p to each triangle of a soup (N, 3, 3), via the closest point on the
     triangle (Voronoi-region method, Ericson, Real-Time Collision Detection 5.1.5)."""
     a, b, c = tris[:, 0], tris[:, 1], tris[:, 2]
+    degenerate = (np.cross(b - a, c - a) ** 2).sum(axis=1) == 0
+    if degenerate.any():
+        distance = np.minimum.reduce((point_segment_dist(p, a, b), point_segment_dist(p, b, c),
+                                      point_segment_dist(p, c, a)))
+        if (~degenerate).any():
+            distance[~degenerate] = point_tri_dist(p, tris[~degenerate])
+        if not np.isfinite(distance).all():
+            raise ValueError("Non-finite point-to-triangle distance")
+        return distance
     ab, ac, ap = b - a, c - a, p - a
     d1, d2 = np.einsum("ij,ij->i", ab, ap), np.einsum("ij,ij->i", ac, ap)
     bp = p - b
@@ -698,7 +755,10 @@ def point_tri_dist(p, tris):
     q = np.where(m[:, None], a + ab * t_ab[:, None], q)                      # edge AB
     q = np.where(((d3 >= 0) & (d4 <= d3))[:, None], b, q)                    # vertex B
     q = np.where(((d1 <= 0) & (d2 <= 0))[:, None], a, q)                     # vertex A
-    return np.linalg.norm(p - q, axis=1)
+    distance = np.linalg.norm(p - q, axis=1)
+    if not np.isfinite(distance).all():
+        raise ValueError("Non-finite point-to-triangle distance")
+    return distance
 
 
 def ray_crossings(tris, origin, d):
@@ -1055,9 +1115,11 @@ def write_report(car):
                    f"about **{y}** (mid-wheelbase Y {car['mid_wb']:.1f}; bounding-box centre Y {car['bbox_cy']:.1f}). "
                    "The belt and its frame already follow `cy`. Place the presentation props (Ahmed body, QC spheres) "
                    "at the same Y, so the hero shots and the blueprint car share a centre.")
-        rec.append("- After moving it, check the belt ends: with a 450 cm half length the belt then reaches about "
-                   f"Y {y + 450}, past the domain inlet at Y 430 and toward the nozzle lip. Shorten `half_len` if the "
-                   "belt should stop inside the jet.")
+        if car.get("belt_half_len") is not None:
+            half_len = car["belt_half_len"]
+            rec.append(f"- After moving it, check the belt ends: the authored {half_len:.1f} cm half length reaches "
+                       f"about Y {y + half_len:.1f}. Compare this with the domain inlet and nozzle lip. Shorten "
+                       "`half_len` if the belt should stop inside the jet.")
     noz_cams = [p for c, s, t, p in CAMERA_OPENING if s.endswith("Nozzle")]
     if noz_cams and NOZZLE_LIP_Y is not None:
         ymax = max(p[1] for p in noz_cams)

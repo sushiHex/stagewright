@@ -811,21 +811,23 @@ def check():
     d = CFG["domain"]
     n, c = CFG["nozzle"], CFG["collector"]
     ok = True
-    print("\n== Jet containment (nozzle exit cross-section extruded from exit to collector lip) ==")
-    hw, h, r = nozzle_size(n["exit_y"])
-    prof = ml.u_profile(hw, h, r, 64)  # open at the floor; close it along z = 0
-    poly = [tuple(p) for p in prof]
-    worst = math.inf
-    for x in d["x"]:
-        z = d["z"][1]
-        inside = _point_in_poly((x, z), poly)
-        dist = _dist_to_poly((x, z), poly)
-        worst = min(worst, dist if inside else -dist)
+    print("\n== Jet containment (nozzle exit and collector throat cross-sections) ==")
+    rows = []
+    sections = (("nozzle", nozzle_size(n["exit_y"])),
+                ("collector", (c["throat_hw"], c["throat_h"], c["throat_r"])))
+    for name, (hw, h, r) in sections:
+        poly = [tuple(p) for p in ml.u_profile(hw, h, r, 64)]  # close at the floor
+        worst = math.inf
+        for x in d["x"]:
+            point = (x, d["z"][1])
+            inside = _point_in_poly(point, poly)
+            dist = _dist_to_poly(point, poly)
+            worst = min(worst, dist if inside else -dist)
+        rows += [(f"{name} side (each)", hw - max(abs(x) for x in d["x"])),
+                 (f"{name} top", h - d["z"][1]),
+                 (f"{name} top corners (to rounded profile)", worst)]
     lip_downstream = n["exit_y"] - 0.5 * n["wall"]
-    rows = [
-        ("side (each)", hw - d["x"][1]),
-        ("top", h - d["z"][1]),
-        ("top corners (to rounded exit corner)", worst),
+    rows += [
         ("upstream (nozzle exit plane to inlet face)", n["exit_y"] - d["y"][1]),
         ("upstream (lip's most downstream point)", lip_downstream - d["y"][1]),
         ("downstream (outlet face to collector lip)", d["y"][0] - c["lip_y"]),
