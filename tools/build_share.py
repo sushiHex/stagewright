@@ -14,6 +14,7 @@ OVERRIDE = MODEL / "scenes" / "blueprint_override.usda"
 README_ASSETS = [ROOT / "docs" / "assets" / name for name in
                  ("nvidia-pipeline.svg", "courtyard-story.gif", "courtyard-closed.png", "courtyard-open.png")]
 LIVE_GUIDE = ROOT / "docs" / "live-viewer.md"
+COURTYARD = ROOT / "models" / "courtyard"
 TOOLS = """build_env build_media build_present build_share check_compute check_gpu_work
 check_loop check_presentation engine field_view fit_check gpu_work image_compute image_io
 mesh_compute meshlib observe physics_usd probe_mechanism project_paths publish render
@@ -117,7 +118,8 @@ def main():
     if not (ROOT / "LICENSE").read_text().startswith("MIT License\n"):
         raise RuntimeError("Expected the selected MIT licence")
     OUT.mkdir(parents=True, exist_ok=True)
-    review = [ROOT / "LICENSE", ROOT / "README.md", *README_ASSETS, LIVE_GUIDE, *MEDIA, *MODEL_DOCS, OVERRIDE]
+    review = [ROOT / "LICENSE", ROOT / "README.md", *README_ASSETS, LIVE_GUIDE,
+              COURTYARD / "README.md", *MEDIA, *MODEL_DOCS, OVERRIDE]
     texture_names = ("belt", "concrete", "epoxy", "honeycomb", "perf", "turntable")
     textures = [MODEL / "assets" / "textures" / f"{name}_{kind}.png"
                 for name in texture_names for kind in ("color", "normal", "orm")]
@@ -127,6 +129,10 @@ def main():
                *(ROOT / "docs" / name for name in ("handoff.md", "plan.md", "recorded-pose-capture.md")),
                *(ROOT / "tools" / f"{name}.py" for name in TOOLS),
                *(ROOT / "viewer" / name for name in ("app.js", "empty.usda", "index.html")),
+               COURTYARD / "build.py",
+               *(COURTYARD / "source" / name for name in
+                 ("__init__.py", "author.py", "parameters.json", "common.py", "build_kit.py",
+                  "fabrication.py", "metrology.py", "control_gallery.py", "logistics.py")),
                MODEL / "assets" / "test_section.usda", *textures,
                MODEL / "scenes" / "present.usda", MODEL / "scenes" / "present_payload.usda"]
     for result in (archive("stagewright-review", review), archive("stagewright-source", sources)):

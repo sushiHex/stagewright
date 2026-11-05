@@ -1,0 +1,25 @@
+{
+  "project": "COURTYARD / NORTH LIFT",
+  "width_m": 24.0,
+  "link_length_m": 18.0,
+  "rear_y_m": 9.0,
+  "lower_pivot_z_m": 0.7,
+  "pivot_spacing_m": 8.0,
+  "target_angle_deg": -80.0,
+  "gravity_m_s2": 9.81,
+  "drive_stiffness": 240000.0,
+  "drive_damping": 1200000.0,
+  "drive_max_force": 40000000.0,
+  "body_masses_kg": {"DriveYoke": 4500.0, "Roof": 7500.0, "SouthWall": 3500.0},
+  "steps": 2400,
+  "fps": 120,
+  "opening_condition": {
+    "name": "Court C01",
+    "x_bounds_m": [-10.0, 10.0],
+    "y_bounds_m": [-8.0, 4.0],
+    "z_bounds_m": [0.05, 35.0],
+    "minimum_open_fraction": 0.95,
+    "final_hold_seconds": 2.0,
+    "description": "At least 95 percent of the 240 square metre footprint is free of overhead scene geometry between z=0.05 and z=35, continuously over the final two seconds of recorded solver poses. Ground paint and the pavement below z=0.05 do not count as overhead geometry."
+  }
+}
