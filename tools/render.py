@@ -10,9 +10,11 @@
 # are hidden (--qc shows them). --prefix names the outputs, e.g. --prefix final_ for the finals.
 # Exit status is nonzero if a requested product has no frame or fails to converge.
 import argparse
+import contextlib
 import os
 from math import gcd
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -37,7 +39,10 @@ def write_override(scene, products, res, spp, ghost, qc, out_dir=OUT_DIR,
                    sample_batch=DEFAULT_SAMPLE_BATCH):
     batch = iteration_samples(spp, sample_batch)
     out_dir.mkdir(parents=True, exist_ok=True)
-    rel = os.path.relpath(scene, out_dir).replace("\\", "/")
+    try:
+        rel = os.path.relpath(scene, out_dir).replace("\\", "/")
+    except ValueError:  # Windows scenes can live on another drive.
+        rel = scene.resolve().as_posix()
     vis = "inherited" if ghost else "invisible"
     qc_vis = "inherited" if qc else "invisible"
     lines = f'''#usda 1.0
@@ -75,9 +80,19 @@ over "Render"
             lines.append(f"        custom int omni:rtx:pt:samplesPerIteration = {batch}")
         lines.append("    }")
     lines.append("}")
-    path = out_dir / f"_override_{scene.stem}_{'ghost' if ghost else 'clean'}.usda"
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
-    return path
+    with tempfile.NamedTemporaryFile(mode="w", prefix="_override_", suffix=".usda",
+                                     dir=out_dir, encoding="utf-8", newline="\n", delete=False) as layer:
+        layer.write("\n".join(lines) + "\n")
+    return Path(layer.name)
+
+
+@contextlib.contextmanager
+def override_layer(*args, **kwargs):
+    layer = write_override(*args, **kwargs)
+    try:
+        yield layer
+    finally:
+        layer.unlink(missing_ok=True)
 
 
 def render_batch(rtx, scene, products, res, spp, ghost, max_steps, tag, qc, out_dir,
@@ -87,9 +102,9 @@ def render_batch(rtx, scene, products, res, spp, ghost, max_steps, tag, qc, out_
 
     import rtx as rt
 
-    layer = write_override(scene, products, res, spp, ghost, qc, out_dir, sample_batch)
     names = {f"/Render/{p}": p for p in products}
-    with rt.loaded_scene(rtx, "stills", layer):
+    with override_layer(scene, products, res, spp, ghost, qc, out_dir, sample_batch) as layer, \
+            rt.loaded_scene(rtx, "stills", layer):
         images, status = rt.converge(rtx, names, ordinal=1, delta_time=1 / 30, max_steps=max_steps)
     for path, name in names.items():
         if path not in images:

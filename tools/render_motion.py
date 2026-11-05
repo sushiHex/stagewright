@@ -10,6 +10,7 @@
 # count and visibility (no domain ghost, no QC spheres) come from the same generated override layer
 # tools/render.py uses.
 import argparse
+import contextlib
 import re
 import subprocess
 import sys
@@ -26,6 +27,9 @@ PRODUCT = "Dolly"
 FPS = MOTION_SETTINGS[PRODUCT]["fps"]
 COUNT = MOTION_SETTINGS[PRODUCT]["frames"]
 WARMUP_PASSES = 2
+DEFAULT_RESOLUTION = (1280, 720)
+DEFAULT_SPP = 64
+DEFAULT_SUPERSAMPLE = 2
 
 
 def frame_directory(product):
@@ -60,6 +64,28 @@ def check_frame_directory(scene, product, fps, count, loop, directory):
             raise ValueError("Custom scenes and alternate settings require --out outside the built-in frame directories")
 
 
+def check_render_directory(scene, product, fps, count, loop, directory, frames, res, spp, supersample):
+    check_frame_directory(scene, product, fps, count, loop, directory)
+    if directory.resolve() == frame_directory(product).resolve() and product in MOTION_SETTINGS:
+        if (frames != list(range(count)) or spp < DEFAULT_SPP or supersample < DEFAULT_SUPERSAMPLE
+                or any(size < minimum for size, minimum in zip(res, DEFAULT_RESOLUTION, strict=True))):
+            raise ValueError("Partial and lower-quality previews require a separate --out directory")
+
+
+@contextlib.contextmanager
+def frame_access(directory):
+    directory.mkdir(parents=True, exist_ok=True)
+    lock = directory / "_sequence.lock"
+    try:
+        lock.touch(exist_ok=False)
+    except FileExistsError:
+        raise RuntimeError(f"Frame directory is busy: {directory}. If a worker was killed, remove {lock} only after it stops.") from None
+    try:
+        yield
+    finally:
+        lock.unlink()
+
+
 def warmup_frames(start, count, loop):
     if loop:
         # Load the full orbit's visible content, then approach the start in playback order.
@@ -81,7 +107,20 @@ def render(frames, res, spp, out_dir, max_steps, scene=SCENE, product=PRODUCT,
     frames = list(frames)
     fps, count = motion_timing(product, fps, count)
     loop = loop_enabled(product, loop)
-    check_frame_directory(scene, product, fps, count, loop, out_dir)
+    check_render_directory(scene, product, fps, count, loop, out_dir, frames, res, spp, supersample)
+    canonical = out_dir.resolve() == frame_directory(product).resolve() and product in MOTION_SETTINGS
+    with frame_access(out_dir):
+        complete = out_dir / "_complete"
+        if canonical:
+            complete.unlink(missing_ok=True)
+        _render(frames, res, spp, out_dir, max_steps, scene, product, fps, count, supersample,
+                loop, cpu_readback, sample_batch, snapshot_poses)
+        if canonical:
+            complete.write_text(str(count), encoding="ascii")
+
+
+def _render(frames, res, spp, out_dir, max_steps, scene, product, fps, count, supersample,
+            loop, cpu_readback, sample_batch, snapshot_poses):
     from gpu_work import GpuPacer
     GpuPacer()
     from image_io import ImageCodec
@@ -91,57 +130,62 @@ def render(frames, res, spp, out_dir, max_steps, scene=SCENE, product=PRODUCT,
 
     out_dir.mkdir(parents=True, exist_ok=True)
     render_res = tuple(size * supersample for size in res)
-    layer = stills.write_override(scene, [product], render_res, spp, ghost=False, qc=False,
-                                  sample_batch=sample_batch)
-    product = f"/Render/{product}"
-    # Warm-up poses are discarded. Loop guards repeat the first two poses after one full
-    # cycle for a photometric seam check, and are deliberately outside the numeric sequence.
-    warm = warmup_frames(frames[0], count, loop)
-    schedule = [(f, None) for f in warm] + [(f, f"{f:04d}.png") for f in frames]
-    if loop and frames == list(range(count)):
-        schedule += [(f, f"_loop_{f:04d}.png") for f in range(min(2, count))]
-    read_pixels = None
-    if supersample > 1:
-        downsampler = RGBDownsampler(supersample)
-        read_pixels = downsampler.capture_cpu if cpu_readback else downsampler.capture
-    if snapshot_poses:
-        # Sample in the author process before render overrides can change source timing.
-        schedule = [(f, f"{f:04d}.png") for f in frames]
+    with stills.override_layer(scene, [product], render_res, spp, ghost=False, qc=False,
+                              out_dir=out_dir, sample_batch=sample_batch) as layer:
+        product = f"/Render/{product}"
+        # Warm-up poses are discarded. Loop guards repeat the first two poses after one full
+        # cycle for a photometric seam check, and are deliberately outside the numeric sequence.
+        warm = warmup_frames(frames[0], count, loop)
+        schedule = [(f, None) for f in warm] + [(f, f"{f:04d}.png") for f in frames]
         if loop and frames == list(range(count)):
             schedule += [(f, f"_loop_{f:04d}.png") for f in range(min(2, count))]
-        with tempfile.TemporaryDirectory(prefix="_poses_", dir=out_dir) as temporary:
-            with rt.open_renderer() as rtx, ImageCodec() as codec:
-                for index, (f, filename) in enumerate(schedule):
-                    pose = Path(temporary) / f"pose_{index}.usda"
-                    subprocess.run([sys.executable, "-I", str(Path(__file__).with_name("sample_transforms.py")),
-                                    str(scene), str(pose), "--seconds", str(f / fps),
-                                    "--render-layer", str(layer.resolve())], check=True)
-                    with rt.loaded_scene(rtx, "pose", pose):
-                        rtx.reset(0.0)
-                        images, status = rt.converge(rtx, [product], 1, delta_time=1 / fps,
-                                                    max_steps=max_steps, read_pixels=read_pixels)
-                    if product not in images:
-                        raise RuntimeError(f"frame {f}: no image captured (last status {status.get(product)})")
-                    codec.write_rgb(out_dir / filename, images[product])
-                    print(f"frame {f} -> {out_dir / filename}", flush=True)
-        return
-    with rt.open_renderer() as rtx, rt.loaded_scene(rtx, "motion", layer) as loaded, ImageCodec() as codec:
-        # Ordinal 1 is the initial load; each scheduled pose gets the next ordinal.
-        for ordinal, (f, filename) in enumerate(schedule, start=2):
-            rt.seek(loaded, ordinal, f / fps)
-            images, status = rt.converge(rtx, [product], ordinal, delta_time=1 / fps, max_steps=max_steps,
-                                        capture=filename is not None, read_pixels=read_pixels)
-            if product not in images:
-                raise RuntimeError(f"frame {f}: no image captured (last status {status.get(product)})")
-            if filename is None:
-                continue
-            codec.write_rgb(out_dir / filename, images[product])
-            label = "loop guard" if filename.startswith("_loop_") else "frame"
-            print(f"{label} {f} -> {out_dir / filename}", flush=True)
+        read_pixels = None
+        if supersample > 1:
+            downsampler = RGBDownsampler(supersample)
+            read_pixels = downsampler.capture_cpu if cpu_readback else downsampler.capture
+        if snapshot_poses:
+            # Sample in the author process before render overrides can change source timing.
+            schedule = [(f, f"{f:04d}.png") for f in frames]
+            if loop and frames == list(range(count)):
+                schedule += [(f, f"_loop_{f:04d}.png") for f in range(min(2, count))]
+            with tempfile.TemporaryDirectory(prefix="_poses_", dir=out_dir) as temporary:
+                with rt.open_renderer() as rtx, ImageCodec() as codec:
+                    for index, (f, filename) in enumerate(schedule):
+                        pose = Path(temporary) / f"pose_{index}.usda"
+                        subprocess.run([sys.executable, "-I", str(Path(__file__).with_name("sample_transforms.py")),
+                                        str(scene), str(pose), "--seconds", str(f / fps),
+                                        "--render-layer", str(layer.resolve())], check=True)
+                        with rt.loaded_scene(rtx, "pose", pose):
+                            rtx.reset(0.0)
+                            images, status = rt.converge(rtx, [product], 1, delta_time=1 / fps,
+                                                        max_steps=max_steps, read_pixels=read_pixels)
+                        if product not in images:
+                            raise RuntimeError(f"frame {f}: no image captured (last status {status.get(product)})")
+                        codec.write_rgb(out_dir / filename, images[product])
+                        print(f"frame {f} -> {out_dir / filename}", flush=True)
+            return
+        with rt.open_renderer() as rtx, rt.loaded_scene(rtx, "motion", layer) as loaded, ImageCodec() as codec:
+            # Ordinal 1 is the initial load; each scheduled pose gets the next ordinal.
+            for ordinal, (f, filename) in enumerate(schedule, start=2):
+                rt.seek(loaded, ordinal, f / fps)
+                images, status = rt.converge(rtx, [product], ordinal, delta_time=1 / fps, max_steps=max_steps,
+                                            capture=filename is not None, read_pixels=read_pixels)
+                if product not in images:
+                    raise RuntimeError(f"frame {f}: no image captured (last status {status.get(product)})")
+                if filename is None:
+                    continue
+                codec.write_rgb(out_dir / filename, images[product])
+                label = "loop guard" if filename.startswith("_loop_") else "frame"
+                print(f"{label} {f} -> {out_dir / filename}", flush=True)
 
 
 def encode(frames_dir, gif_width, gif_fps, make_gif=False, fps=None, count=None,
            product=PRODUCT, scene=SCENE, loop=None):
+    with frame_access(frames_dir):
+        return _encode(frames_dir, gif_width, gif_fps, make_gif, fps, count, product, scene, loop)
+
+
+def _encode(frames_dir, gif_width, gif_fps, make_gif, fps, count, product, scene, loop):
     fps, count = motion_timing(product, fps, count)
     loop = loop_enabled(product, loop)
     settings = MOTION_SETTINGS.get(product)
@@ -151,6 +195,10 @@ def encode(frames_dir, gif_width, gif_fps, make_gif=False, fps=None, count=None,
     check_frame_directory(scene, product, fps, count, loop, frames_dir)
     canonical = (frames_dir == frame_directory(product).resolve()
                  and canonical_sequence(scene, product, fps, count, loop))
+    if canonical:
+        complete = frames_dir / "_complete"
+        if not complete.is_file() or complete.read_text(encoding="ascii") != str(count):
+            raise ValueError("Built-in frames are not a completed render. Render the full sequence before encoding.")
     # Only each complete default presentation sequence may replace its public media source.
     # Preview and custom-scene videos stay with their explicitly selected frame directory.
     video_dir = OUT if canonical else frames_dir
@@ -174,7 +222,7 @@ def encode(frames_dir, gif_width, gif_fps, make_gif=False, fps=None, count=None,
     # The camera moves on every frame, so frame differencing saves little and dithering noise costs a
     # lot. The scene is nearly all grey, so a small undithered palette holds up and keeps the file
     # small enough to embed in a README.
-    graph = (f"fps={gif_fps},scale={gif_width}:-1:flags=lanczos,split[a][b];"
+    graph = (f"trim=end_frame={count},fps={gif_fps},scale={gif_width}:-1:flags=lanczos,split[a][b];"
              "[a]palettegen=max_colors=64:stats_mode=full[p];[b][p]paletteuse=dither=none:diff_mode=rectangle")
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(fps), "-i", src,
                     "-filter_complex", graph, "-loop", "0", str(gif)], check=True)
@@ -191,9 +239,9 @@ def parse_args(argv=None):
     ap.add_argument("--loop", action="store_true", default=None,
                     help="periodic generic sequence; Orbit360 enables this automatically")
     ap.add_argument("--frames", default="all", help="'all' or a comma list of frame numbers")
-    ap.add_argument("--res", default="1280x720")
-    ap.add_argument("--spp", type=int, default=64)
-    ap.add_argument("--supersample", type=int, choices=(1, 2), default=2,
+    ap.add_argument("--res", default="x".join(map(str, DEFAULT_RESOLUTION)))
+    ap.add_argument("--spp", type=int, default=DEFAULT_SPP)
+    ap.add_argument("--supersample", type=int, choices=(1, 2), default=DEFAULT_SUPERSAMPLE,
                     help="render scale before Warp filtered downsampling; --res is the output size")
     ap.add_argument("--sample-batch", type=int, default=stills.DEFAULT_SAMPLE_BATCH,
                     help="sample batch limit; uses a divisor of --spp; 1 retains the reference launch schedule")
@@ -256,6 +304,12 @@ def parse_args(argv=None):
         ap.error("--res must be WxH with positive integers")
     if len(a.res) != 2 or any(v <= 0 for v in a.res):
         ap.error("--res must be WxH with positive integers")
+    if not a.no_render:
+        try:
+            check_render_directory(a.scene, a.product, a.fps, a.count, a.loop,
+                                   a.out, a.frames, a.res, a.spp, a.supersample)
+        except ValueError as error:
+            ap.error(str(error))
     if a.encode and not a.no_render and any(v % 2 for v in a.res):
         ap.error("--res dimensions must be even when encoding H.264")
     if not a.no_render and not a.scene.is_file():
