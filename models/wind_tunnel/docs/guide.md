@@ -256,6 +256,13 @@ uv pip install --python .venv/Scripts/python.exe "pynvvideocodec==2.2.3" "nvidia
 Authoring (`pxr`) and rendering (`ovrtx`) always run in separate processes, because ovrtx carries
 its own USD runtime. Stills land in `build/stills/`, frames in `build/frames/dolly/`, and the MP4
 in `build/out/`. To encode an existing complete sequence, use `tools/render_motion.py --no-render --encode`. Add `--gif` only to request the optional GIF; that flag requires ffmpeg on the path.
+Built-in frame directories accept full sequences at the default image quality or higher.
+Use a separate `--out` for partial or lower-quality previews. A full successful render writes
+`_complete`; an interrupted render cannot be encoded as an accepted sequence. Existing built-in
+frames without this completion flag must be rendered again. Custom frame directories retain
+the existing encode-only workflow, including a different playback frame rate.
+One worker can use a frame directory at a time. If a worker is killed, remove `_sequence.lock`
+only after that worker has stopped. Render overrides are temporary and unique to each call.
 `tools/build_media.py` copies only fixed presentation output paths into `models/wind_tunnel/media/`, never `build/private/`.
 
 `Orbit360` is a wide dolly/crane tour through the environment. Its closed cubic B-spline
