@@ -1,8 +1,8 @@
 # stagewright
 
-Parametric OpenUSD worlds, built from source. The repo will hold several procedural models; the first
-(and so far only) one is described below. Its assets, scenes, documentation and public media live
-under `models/wind_tunnel/`; shared helpers and command-line tools stay in `tools/`.
+Parametric OpenUSD worlds, built from source. The wind-tunnel model lives under
+`models/wind_tunnel/`; the accepted COURTYARD generator and build guide live under
+`models/courtyard/`. Shared helpers and command-line tools stay in `tools/`.
 
 The first model is a presentation-quality open-jet automotive wind tunnel test section, authored in OpenUSD and rendered
 headless with NVIDIA RTX (`ovrtx`). It is built to drop into the environment slot of NVIDIA's
@@ -216,6 +216,8 @@ dependency, not a completed hall, loaded mechanism, structure or model-construct
   refuse to save a file that contains NaN.
 - `usdex` authors arcs as `prepend references` / `prepend payload`. That is fine in our own roots, but
   the blueprint override must use the explicit `payload = [...]` list-op.
-- **Validator:** the rule that wants USDA arrays over 64 elements stored as binary cannot pass while
-  the assets stay USDA text. It is accepted. Every other rule must be clean.
+- **Wind-tunnel validator:** the rule that wants USDA arrays over 64 elements stored as binary cannot
+  pass while those assets stay USDA text. It is accepted. Every other wind-tunnel rule must be clean.
+  COURTYARD preserves the accepted source and its inherited validation findings, listed in its model
+  guide. Do not claim that COURTYARD passes the default validator preset.
 - Windows, Python 3.13 (`python`, not `python3`). Use forward slashes in paths.

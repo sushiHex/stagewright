@@ -18,7 +18,7 @@ NVIDIA PhysX results; surrounding buildings are static additions.
 |---|---|
 | ![The completed procedural workshop in its closed pose](docs/assets/courtyard-closed.png) | ![The same workshop with roof and wall raised by the original solver recording](docs/assets/courtyard-open.png) |
 
-The quickstart builds the wind-tunnel model. COURTYARD shows the latest development work.
+Build COURTYARD from source with the [model guide](models/courtyard/README.md).
 
 <details>
 <summary>Earlier wind-tunnel study</summary>
@@ -76,7 +76,7 @@ and aerodynamic behavior remain unverified. Fine details can shimmer in motion.
 
 ## Quickstart
 
-Windows, Python 3.13, [uv](https://github.com/astral-sh/uv) and an NVIDIA RTX GPU with a compatible driver.
+Build the wind tunnel on Windows with Python 3.13, [uv](https://github.com/astral-sh/uv) and an NVIDIA RTX GPU with a compatible driver.
 
 ```powershell
 git clone https://github.com/sushiHex/stagewright.git
