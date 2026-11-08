@@ -3,33 +3,79 @@
 **Prompt-based procedural environments. OpenUSD. A 100% NVIDIA core scene pipeline.**
 
 Describe an environment. A coding agent writes editable Python generators.
-NVIDIA tools author OpenUSD, validate the scene, render with RTX and export the media.
+NVIDIA libraries build the OpenUSD scene, simulate its mechanisms and render the result.
 The prompt shapes the code; the code regenerates the world.
 
-## Latest study: COURTYARD
+## Current study: mecha assembly
 
-Eight saved OpenUSD stages show a workshop take shape. One motor then lifts the
-roof and wall through simulated joints, opening a proving court. The motion replays
-NVIDIA PhysX results; surrounding buildings are static additions.
+![Giant mechas in a procedural factory, with a suspended upper-body assembly, matching legs and foreground service equipment](docs/assets/mecha-assembly.png)
+
+A traveling bridge carries a mecha upper body toward its matching legs. A driven joint
+moves the bridge; a passive hinge lets the load swing under gravity. PhysX records the
+body poses, and RTX renders their USD replay.
+
+Work in progress: a shorter assembly sequence, final lowering and capture that keeps
+the desktop responsive. Follow [the factory study](https://github.com/sushiHex/stagewright/issues/51).
+
+## Build from source
+
+| Model | What it does |
+|---|---|
+| [COURTYARD](models/courtyard/README.md) | One motor lifts the roof and wall to open a proving court. |
+| [Inspection hall](models/inspection_hall/README.md) | One motor opens the roof and deploys a deck through passive joints. |
+| [Wind tunnel](models/wind_tunnel/docs/guide.md) | Procedural hall, nozzle, test section and collector, with a Blueprint override. |
+
+**COURTYARD: saved construction stages and recorded PhysX motion**
 
 ![Eight saved construction stages followed by recorded roof and wall motion](docs/assets/courtyard-story.gif)
 
-| Closed workshop | Recorded open pose |
-|---|---|
-| ![The completed procedural workshop in its closed pose](docs/assets/courtyard-closed.png) | ![The same workshop with roof and wall raised by the original solver recording](docs/assets/courtyard-open.png) |
+Construction studies retain the prompt, declared inputs and model settings with their
+results. Saved USD revisions show scene changes; recorded solver poses show motion.
+The [live USD observer](docs/live-viewer.md) displays published revisions through RTX and WebRTC.
 
-Build COURTYARD from source with the [model guide](models/courtyard/README.md).
-Also build the [inspection hall](models/inspection_hall/README.md): one motor opens
-the roof and deploys an elevated deck through passive joints.
+## 100% NVIDIA across the core scene pipeline
+
+![A prompt guides editable Python generators. NVIDIA tools build, simulate, validate, render and export the scene.](docs/assets/nvidia-pipeline.svg)
+
+| Stage | NVIDIA tools |
+|---|---|
+| Author and compute | OpenUSD Exchange SDK + Warp |
+| Simulate and replay | ovphysx / PhysX CUDA pose recording + USD replay |
+| Validate | NVIDIA USD validator |
+| Render and filter | ovrtx / ovstage (RTX PathTracing) + Warp filtering |
+| Images and video | nvImageCodec + PyNvVideoCodec / NVENC |
+| Optional live review | ovstream WebRTC + ovrtx |
+
+The claim covers these core stages. Python, uv, NumPy and the coding agent support
+the workflow; optional GIF export uses FFmpeg. NVIDIA libraries retain their own licenses.
+
+## Quickstart
+
+Windows, Python 3.13, [uv](https://github.com/astral-sh/uv) and an NVIDIA RTX GPU with a compatible driver.
+
+```powershell
+git clone https://github.com/sushiHex/stagewright.git
+cd stagewright
+uv venv --python 3.13 .venv
+uv pip install --python .venv/Scripts/python.exe -r requirements.txt
+
+.venv/Scripts/python.exe models/courtyard/build.py --out build/courtyard
+```
+
+Open `build/courtyard/scene.usda` to inspect the scene. Follow the
+[COURTYARD guide](models/courtyard/README.md#record-the-mechanism) to install the separate
+physics environment, record powered and motor-off runs, and render their replay.
+Keep authoring, physics and rendering in separate processes. Check and reserve GPU
+capacity through vram-mcp before GPU work; use one worker at a time.
+
+These are conceptual environments. Recorded rigid-body motion does not establish
+structural strength or aerodynamic validity. Each model guide states what was checked.
+External Blueprint content and dependencies are not bundled.
 
 <details>
-<summary>Earlier wind-tunnel study</summary>
-
-**Seamless 360 tour**
+<summary>Wind tunnel: seamless 360 tour and additional views</summary>
 
 https://github.com/user-attachments/assets/bacc0ef1-b90b-4d65-8be2-4a333056c435
-
-## Additional views
 
 | | |
 |---|---|
@@ -38,72 +84,12 @@ https://github.com/user-attachments/assets/bacc0ef1-b90b-4d65-8be2-4a333056c435
 | ![Wake-side view toward the collector](models/wind_tunnel/media/wake.jpg) | ![Lighting QC spheres beside the model](models/wind_tunnel/media/qc_main.jpg) |
 | Beside the model, looking downstream at the collector | Lighting QC: 18% grey, chrome and clear-coated paint spheres |
 
+See the [technical guide](models/wind_tunnel/docs/guide.md),
+[fit report](models/wind_tunnel/docs/fit-check.md) and
+[asset provenance](models/wind_tunnel/docs/assets.md).
+
 </details>
 
-[Quickstart](#quickstart) · [Technical guide](models/wind_tunnel/docs/guide.md) · [Live USD guide](docs/live-viewer.md)
-
-## From prompt to procedural world
-
-> Create an open-jet automotive wind tunnel with a honeycomb nozzle, a lit plenum hall,
-> a turntable and five-belt floor, and a bell-mouth collector.
-
-The wind-tunnel generator authors the hall, hardware and lighting in OpenUSD.
-An Ahmed-style reference body is composed only into the presentation layer.
-
-## 100% NVIDIA across the core scene pipeline
-
-![A prompt guides a coding agent to create Python builders. NVIDIA tools then build, check, render and export the scene.](docs/assets/nvidia-pipeline.svg)
-
-| Stage | NVIDIA tools |
-|---|---|
-| Author and compute | OpenUSD Exchange SDK + Warp |
-| Validate | NVIDIA USD validator |
-| Render and filter | ovrtx / ovstage (RTX PathTracing) + Warp filtering |
-| Images and video | nvImageCodec + PyNvVideoCodec / NVENC |
-| Optional physics | ovphysx CUDA pose recording + USD replay |
-| Optional live review | ovstream WebRTC + ovrtx |
-
-Python, uv and NumPy support the workflow; the coding agent supplies the prompt-to-code step.
-The optional GIF fallback uses FFmpeg. The NVIDIA claim covers the core scene and media stages above.
-
-## Verification
-
-The shipped wind tunnel passes all 29 fit checks. Composition, transforms, bounds,
-camera framing and rendered loop continuity were checked.
-See the [fit report](models/wind_tunnel/docs/fit-check.md) and
-[verification details](models/wind_tunnel/docs/guide.md#what-was-verified).
-
-These are conceptual presentation environments. Execution in the blueprint application
-and aerodynamic behavior remain unverified. Fine details can shimmer in motion.
-
-## Quickstart
-
-Build the wind tunnel on Windows with Python 3.13, [uv](https://github.com/astral-sh/uv) and an NVIDIA RTX GPU with a compatible driver.
-
-```powershell
-git clone https://github.com/sushiHex/stagewright.git
-cd stagewright
-uv venv --python 3.13 .venv
-uv pip install --python .venv/Scripts/python.exe -r requirements.txt
-
-.venv/Scripts/python.exe tools/build_env.py
-.venv/Scripts/python.exe tools/build_present.py
-.venv/Scripts/python.exe tools/check_presentation.py
-.venv/Scripts/python.exe tools/render.py --products Hero
-```
-
-The render is saved to `build/stills/hero.png`. Keep authoring and rendering in separate processes.
-Use the [technical guide](models/wind_tunnel/docs/guide.md#build-it) for motion, validation,
-render controls and [blueprint integration](models/wind_tunnel/docs/guide.md#using-the-override).
-
-## Use the environment
-
-The environment payload, `models/wind_tunnel/assets/test_section.usda`, contains the hall,
-hardware and lighting. The [override](models/wind_tunnel/scenes/blueprint_override.usda) replaces
-the blueprint's environment while keeping the presentation prop separate.
-
-`models/wind_tunnel/` holds the first model. `tools/` holds the builders and shared render helpers.
-All shipped geometry and textures are procedural; external blueprint content and dependencies
-are not bundled. See [assets and provenance](models/wind_tunnel/docs/assets.md).
+**SIMPLIFICATION IS PROGRESS.**
 
 [MIT](LICENSE) for original code and generated content. Dependencies retain their own terms.
