@@ -6,6 +6,8 @@ Describe an environment. A coding agent writes editable Python generators.
 NVIDIA libraries build the OpenUSD scene, simulate its mechanisms and render the result.
 The prompt shapes the code; the code regenerates the world.
 
+Companion project: [**acceptance-lab**](https://github.com/sushiHex/acceptance-lab) grades an agent's changes to OpenUSD scenes against a written contract, and trains on the result.
+
 ## Current study: mecha assembly
 
 ![Giant mechas in a procedural factory, with a suspended upper-body assembly, matching legs and foreground service equipment](docs/assets/mecha-assembly.png)
