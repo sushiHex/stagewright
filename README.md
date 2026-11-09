@@ -1,6 +1,6 @@
 # stagewright
 
-**Prompt-based procedural environments. OpenUSD. A 100% NVIDIA core scene pipeline.**
+**Prompt-based procedural environments. OpenUSD (Open Universal Scene Description). A 100% NVIDIA core scene pipeline.**
 
 Describe an environment. A coding agent writes editable Python generators.
 NVIDIA libraries build the OpenUSD scene, simulate its mechanisms and render the result.
@@ -31,7 +31,7 @@ the desktop responsive. Follow [the factory study](https://github.com/sushiHex/s
 
 Construction studies retain the prompt, declared inputs and model settings with their
 results. Saved USD revisions show scene changes; recorded solver poses show motion.
-The [live USD observer](docs/live-viewer.md) displays published revisions through RTX and WebRTC.
+The [live USD observer](docs/live-viewer.md) displays published revisions through RTX and WebRTC (Web Real-Time Communication).
 
 ## 100% NVIDIA across the core scene pipeline
 
@@ -43,7 +43,7 @@ The [live USD observer](docs/live-viewer.md) displays published revisions throug
 | Simulate and replay | ovphysx / PhysX CUDA pose recording + USD replay |
 | Validate | NVIDIA USD validator |
 | Render and filter | ovrtx / ovstage (RTX PathTracing) + Warp filtering |
-| Images and video | nvImageCodec + PyNvVideoCodec / NVENC |
+| Images and video | nvImageCodec + PyNvVideoCodec / NVENC (NVIDIA Encoder) |
 | Optional live review | ovstream WebRTC + ovrtx |
 
 The claim covers these core stages. Python, uv, NumPy and the coding agent support
@@ -80,9 +80,9 @@ https://github.com/user-attachments/assets/bacc0ef1-b90b-4d65-8be2-4a333056c435
 | | |
 |---|---|
 | ![Blueprint camera view with the flow domain outlined](models/wind_tunnel/media/main.jpg) | ![Nozzle flange and supports](models/wind_tunnel/media/detail.jpg) |
-| Blueprint camera pose and lens, with the CFD flow domain outlined | Nozzle flange, seams and A-frame supports |
+| Blueprint camera pose and lens, with the CFD (computational fluid dynamics) flow domain outlined | Nozzle flange, seams and A-frame supports |
 | ![Wake-side view toward the collector](models/wind_tunnel/media/wake.jpg) | ![Lighting QC spheres beside the model](models/wind_tunnel/media/qc_main.jpg) |
-| Beside the model, looking downstream at the collector | Lighting QC: 18% grey, chrome and clear-coated paint spheres |
+| Beside the model, looking downstream at the collector | Lighting QC (quality control): 18% grey, chrome and clear-coated paint spheres |
 
 See the [technical guide](models/wind_tunnel/docs/guide.md),
 [fit report](models/wind_tunnel/docs/fit-check.md) and
