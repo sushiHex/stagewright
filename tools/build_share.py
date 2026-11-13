@@ -15,6 +15,7 @@ README_ASSETS = [ROOT / "docs" / "assets" / name for name in
                  ("nvidia-pipeline.svg", "courtyard-story.gif", "courtyard-closed.png", "courtyard-open.png")]
 LIVE_GUIDE = ROOT / "docs" / "live-viewer.md"
 COURTYARD = ROOT / "models" / "courtyard"
+HALL = ROOT / "models" / "inspection_hall"
 TOOLS = """build_env build_media build_present build_share check_compute check_gpu_work
 check_loop check_presentation engine field_view fit_check gpu_work image_compute image_io
 mesh_compute meshlib observe physics_usd probe_mechanism project_paths publish render
@@ -119,7 +120,7 @@ def main():
         raise RuntimeError("Expected the selected MIT licence")
     OUT.mkdir(parents=True, exist_ok=True)
     review = [ROOT / "LICENSE", ROOT / "README.md", *README_ASSETS, LIVE_GUIDE,
-              COURTYARD / "README.md", *MEDIA, *MODEL_DOCS, OVERRIDE]
+              COURTYARD / "README.md", HALL / "README.md", *MEDIA, *MODEL_DOCS, OVERRIDE]
     texture_names = ("belt", "concrete", "epoxy", "honeycomb", "perf", "turntable")
     textures = [MODEL / "assets" / "textures" / f"{name}_{kind}.png"
                 for name in texture_names for kind in ("color", "normal", "orm")]
@@ -131,8 +132,10 @@ def main():
                *(ROOT / "viewer" / name for name in ("app.js", "empty.usda", "index.html")),
                COURTYARD / "build.py",
                *(COURTYARD / "source" / name for name in
-                 ("__init__.py", "author.py", "parameters.json", "common.py", "build_kit.py",
+                 ("__init__.py", "author.py", "measure.py", "parameters.json", "common.py", "build_kit.py",
                   "fabrication.py", "metrology.py", "control_gallery.py", "logistics.py")),
+               HALL / "build.py",
+               *(HALL / "source" / name for name in ("design.json", "geometry.py", "measure.py")),
                MODEL / "assets" / "test_section.usda", *textures,
                MODEL / "scenes" / "present.usda", MODEL / "scenes" / "present_payload.usda"]
     for result in (archive("stagewright-review", review), archive("stagewright-source", sources)):
