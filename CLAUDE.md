@@ -229,6 +229,14 @@ Build a model and run one check at a time; none of these is a suite to run after
 .venv/Scripts/python.exe tools/render_motion.py --frames 0,60,120 --out build/<new-dir>
 ```
 
+The companion repository [acceptance-lab](https://github.com/sushiHex/acceptance-lab) holds one
+written contract per model and a read-only audit that judges a built scene against it. The
+contracts live there so the judge stays independent of these generators. After changing a
+generator's stage metadata, layer paths, prim names or outer geometry, run from an acceptance-lab
+checkout: `python audit.py contracts/stagewright-<model>.json --root <this checkout, or the built
+hall or COURTYARD directory>`. If a contract no longer matches an intended change, update the
+contract there from this repository's declared dimensions, never from the observed bounds.
+
 Preview a bounded `--frames` selection before any full sequence. Only the complete canonical
 Dolly and Orbit360 sequences write `build/out/*.mp4`, which `build_media.py` copies to public media;
 custom scenes need their own `--out`. The full wind-tunnel rebuild order is in `docs/handoff.md`
