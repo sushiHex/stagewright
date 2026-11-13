@@ -325,7 +325,10 @@ dependency, not a completed hall, loaded mechanism, structure or model-construct
 - **Write generated layer paths anchored**, as `./x` or `../x`. A bare `x` or `dir/x` is a search
   path, and a strict bundle walk refuses it.
 - Run `fit_check.py` only where `external/blueprint` is a real directory under the checkout. Through
-  a junction or symlink its path filter misfires and reports a false failure.
+  a junction or symlink its path filter misfires and reports a false failure. Its count of
+  unresolved references in the blueprint's hero car also varies with the checkout's path length:
+  Windows long paths are off here, so some fetched material files pass 260 characters in a
+  longer-named worktree. The count is reported, not failed; do not treat a change as a regression.
 - Retained-stage time updates were unreliable for recorded rigid-body replays. Use
   `--snapshot-poses` for them; the default time-update path remains for authored camera motion.
 - Windows, Python 3.13 (`python`, not `python3`). Use forward slashes in paths.
