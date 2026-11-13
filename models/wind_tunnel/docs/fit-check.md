@@ -15,7 +15,7 @@ This is a conceptual presentation environment. The check covers composition, tra
 | Loaded payload arcs: one arc to test_section.usda:/Environment, old env layer unused | **PASS** | [('test_section.usda', '/Environment')] |
 | /World/WindTunnel local-to-world is identity | **PASS** |  |
 | No composition errors from our environment | **PASS** | 1 error(s) on the stage, 0 from the environment |
-| Environment asset attributes all resolve | **PASS** | 0 unresolved in /World/WindTunnel; 17 on the whole stage |
+| Environment asset attributes all resolve | **PASS** | 0 unresolved in /World/WindTunnel; 20 on the whole stage |
 | /World/CAE composed transform matches Base.usda source values | **PASS** |  |
 | Domain recomputed from source agrees with CLAUDE.md | **PASS** | X -144.0..144.0, Y -650.0..430.0, Z -4.0..248.0 |
 | Environment authored extents match their points | **PASS** | 0.0000 cm |
@@ -57,7 +57,7 @@ After loading `/World/WindTunnel`, its payload arcs are `[('test_section.usda', 
 
 ### Composition errors and missing assets (stage fully loaded)
 
-- Composition error, **git-lfs pointer (file present, content not fetched)**: `Could not open asset @external/blueprint/source/specializations/auto-aero/data/low_res/detailed_car_510/aero_suv_low.ply@ for payload introduced by @external/blueprint/source/specializations/auto-aero/stages/layers/CarCFD.usda@</World/CarCFD{Rims=Standard}{Mirrors=On}{Spoiler=On}{Ride_Height=High}> -- Cannot determine file format fo`
+- Composition error, **git-lfs pointer (file present, content not fetched)**: `Could not open asset @external/blueprint/source/specializations/auto-aero/data/low_res/detailed_car_510/aero_suv_low.ply@ for payload introduced by @external/blueprint/source/specializations/auto-aero/stages/layers/CarCFD.usda@</World/CarCFD{Rims=Standard}{Mirrors=On}{Spoiler=On}{Ride_Height=High}> -- Cannot determine `
 
 Asset-valued attributes that do not resolve to real content, by owner:
 
@@ -68,6 +68,7 @@ Asset-valued attributes that do not resolve to real content, by owner:
 | `/World/CAE` | unresolved | 2 | `/World/CAE/PlanarSlice_VelocityMagnitude/Materials/UnlitScalarColor/Shader.inputs:lut = @cae/colormaps/gist_rainbow.png@` |
 | `/World/CarHero` | MDL or shader search path (resolved by the renderer, not by Ar) | 4 | `/World/CarHero/Looks/Plastic_Black/Shader.info:mdl:sourceAsset = @OmniPBR.mdl@` |
 | `/World/CarHero` | git-lfs pointer (file present, content not fetched) | 1 | `/World/CarHero/Looks/Screen/Shader.inputs:emissive_mask_texture = @./Textures/ConceptCar_interiorScreenMat_emissive.1002.png@` |
+| `/World/CarHero` | unresolved | 3 | `/World/CarHero/Looks/Plastic_White_Glossy/Shader.info:mdl:sourceAsset = @../omniverse-content-production.s3.us-west-2.amazonaws.com/Material` |
 
 ## 2. CFD domain, recomputed from the blueprint source
 
@@ -146,12 +147,12 @@ Every renderable environment gprim against the domain box (AABB):
 
 Jet window (the domain's X-Z cross-section, extruded along Y, against the tunnel hardware):
 
-| Part | Y faces (cm) | gap along Y to the domain (cm) | min X-Z clearance, domain section to the opening (cm) | vertices inside the section |
+| Part | Y faces (cm) | gap along Y to the domain (cm) | min X-Z clearance, domain section to the opening (cm) | section inside mesh bounds |
 |---|---|---|---|---|
-| Nozzle | 762.5..1575.0 | 332.5 | 181.0 | 0 |
-| Collector | -1600.0..-1100.0 | 450.0 | 256.0 | 0 |
+| Nozzle | 762.5..1575.0 | 332.5 | 152.0 | True |
+| Collector | -1600.0..-1100.0 | 450.0 | 252.0 | True |
 
-The Y gap is measured from the nozzle mesh's most downstream point (the rolled lip) and from the collector mesh's most upstream point. The X-Z clearance is the distance from each mesh vertex to the domain's X-Z rectangle, i.e. vertex-based: chords on the rounded corners sit inside the true arc by at most the sagitta, well under 1 mm at the current tessellation. Both parts must be found for this check to pass.
+The Y gap is measured from the nozzle mesh's most downstream point (the rolled lip) and from the collector mesh's most upstream point. The X-Z clearance is measured from the projected mesh triangles to the domain section, including straight spans and crossings. The section must also fit within each part's width and height. The domain's ground offset below the open profiles is allowed. Both parts must be found for this check to pass.
 
 - Lights on the composed, fully loaded stage: 30; under `/World/WindTunnel`: 30 (30 RectLight); elsewhere: none.
 - Blueprint schemas (`Rtwt*`, `Cae*`, `OmniSci*`) applied under `/World/WindTunnel`: none.
@@ -178,7 +179,7 @@ The Y gap is measured from the nozzle mesh's most downstream point (the rolled l
 - Car footprint: farthest point 257.6 from the turntable centre, so the car sits on the turntable with 242.4 to spare.
 - Turntable centre against the car: mid-wheelbase offset -0.1, bounding-box centre offset +5.2.
 - Tyre contact: lowest tyre point Z -0.06, turntable disc top Z 0.10: the contact patches sink 0.16 cm into the disc surface. That is a cosmetic millimetre-scale overlap, hidden under the tyre.
-- Rolling-road belt: X -48.5..48.5, Y -287.0..473.0, top Z 0.30; with its frame it is 97.0 wide. The inner tyre faces are at |X| 77.3, so the belt and frame run between the wheels with 28.8 to spare each side. Lowest car point above the belt footprint: Z 14.7 (underbody clearance over the belt 14.4).
+- Rolling-road belt: X -48.5..48.5, Y -287.0..473.0, top Z 0.30; with its frame it is 120.0 wide. The inner tyre faces are at |X| 77.3, so the belt and frame run between the wheels with 17.3 to spare each side. Lowest car point above the belt footprint: Z 14.7 (underbody clearance over the belt 14.4).
 - The belt spans the car's full length (Y -154.2..350.6): True.
 
 | Wheel | contact patch X, Y (cm) | wheel belt X, Y (cm) | margin to belt edge (cm) |
@@ -215,7 +216,7 @@ Nozzle surface clearance: the exact minimum distance from any camera sample (236
 
 ## 6. Blueprint source that addresses the old environment
 
-Scanned 117 files (`.js, .json, .kit, .py, .toml, .ts, .usda`) under `external/blueprint`, skipping `.git`, the old environment's own directory and LFS pointers. Old environment asset names searched for (from the files under `external/blueprint/source/specializations/auto-aero/stages/layers/WindTunnel`): `ComputerMouseB`, `Contemporary_Hutch`, `Contemporary_LaterialFile`, `Contemporary_LockedStorage`, `Contemporary_OpenStorage`, `EdgeLitAcrylicHardwiredExitSign_A01_01`, `FireAlarm_A01_01`, `KeyboardB`, `MonitorD`, `Steelbook`, `Turntable`, `WireComputerCart_A01_01`, `spotLight_geom`, `spotLight_prop`, `windTunnelEnv`, `windTunnelEnv_geom`.
+Scanned 117 files (`.js, .json, .kit, .py, .toml, .ts, .usda`) under `external/blueprint`, skipping `.git`, the old environment's own directory and LFS pointers. Old environment asset names searched for (from the files under `external/blueprint/source/specializations/auto-aero/stages/layers/WindTunnel`): `ComputerMouseB`, `Contemporary_Hutch`, `Contemporary_LaterialFile`, `Contemporary_LockedStorage`, `Contemporary_OpenStorage`, `FireAlarm_A01_01`, `KeyboardB`, `MonitorD`, `Steelbook`, `Turntable`, `WireComputerCart_A01_01`, `spotLight_geom`, `spotLight_prop`, `windTunnelEnv`, `windTunnelEnv_geom`.
 
 Scope of this scan, so a reader knows what it cannot see:
 

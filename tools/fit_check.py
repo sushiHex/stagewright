@@ -427,6 +427,7 @@ def by_name(parts, name):
 
 
 def check_environment(stage, dom_lo, dom_hi):
+    from pxr import UsdGeom
     md.append("\n## 3. Environment bounds and containment\n")
     parts, cache = env_parts(stage)
     rng = cache.ComputeWorldBound(stage.GetPrimAtPath("/World/WindTunnel")).ComputeAlignedRange()
