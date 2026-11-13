@@ -30,7 +30,7 @@ Choose the variant in a separate presentation layer referencing the same asset:
 
 The presentation layer selects the variant before rendering; there is no automatic distance
 switching. Authoring and RTX rendering remain separate processes. Candidate outputs stay under
-ignored `build/`; accepted public media are unchanged.
+ignored `build/`.
 
 ## What was verified
 

@@ -132,16 +132,16 @@ then `docs/plan.md`, then this file.
   the layout and visibly reduces curved detail. The local `comparison.html` contains the
   completed comparisons. Cutaways read most clearly in Detail; the broad collector view is
   subtler. The owner judged this modification too subtle for the intended demonstration;
-  set further jacket refinement aside and retain the useful builder/LOD work. Changes remain
-  uncommitted; accepted assets and public media are untouched.
+  set further jacket refinement aside and retain the useful builder/LOD work. Delivered in PR #60
+  after owner acceptance: the tracked asset, scenes and public media now include the housings.
 
-- [Issue #3](https://github.com/sushiHex/stagewright/issues/3): an uncommitted scene candidate adds
+- [Issue #3](https://github.com/sushiHex/stagewright/issues/3): the environment now has
   one inset turntable marking using the existing Accent material (radii 460..480 cm, top Z 0.20 cm).
   Astra and Fable agreed on the change. Candidate assets and the matched Hero render live under
   ignored `build/candidates/turntable-marking/`. Containment and presentation checks pass; validation
   has only the documented USDA storage exception. Existing environment attributes and textures
-  match the baseline. Canonical assets and accepted media remain unchanged pending visual acceptance;
-  do not refresh public media from this candidate yet.
+  match the baseline. Accepted by the owner and delivered in PR #60 with the regenerated asset and
+  refreshed public media.
 
 - Simplification pass: render CLIs now log output paths directly, without diagnostic-only pixel
   statistics; unused path constants were removed. Focused CPU checks confirm unchanged pixel

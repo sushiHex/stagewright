@@ -240,7 +240,10 @@ def build(mode="reference", asset_path=None, destination=MODEL, lod="final"):
     destination = Path(destination).resolve()
     path = destination / "scenes" / SCENES[mode].name
     asset_path = destination / "assets" / "test_section.usda" if asset_path is None else Path(asset_path).resolve()
-    asset = os.path.relpath(asset_path, path.parent).replace("\\", "/")
+    try:
+        asset = os.path.relpath(asset_path, path.parent).replace("\\", "/")
+    except ValueError:  # another drive: no relative form exists
+        asset = asset_path.as_posix()
     path.parent.mkdir(parents=True, exist_ok=True)
     stage = ux.createStage(str(path), "World", UsdGeom.Tokens.z, 0.01, "stagewright tools/build_present.py")
     stage.SetTimeCodesPerSecond(60)
