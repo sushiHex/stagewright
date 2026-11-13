@@ -93,5 +93,6 @@ COURTYARD is a conceptual presentation environment. Its pose records do not esta
 structural adequacy, contact safety, actuator sizing or aerodynamic behavior.
 
 Packaging checks cover source parity, composition and selected RTX captures. The default
-USD validator still reports inherited mesh bounds, normals, topology and grouping issues.
-This package preserves those parts of the accepted source.
+USD validator still reports inherited mesh normals, topology and grouping issues.
+This package preserves those parts of the accepted source. Generated meshes carry an
+extent computed from their points; no point, face or transform differs from the accepted source.
