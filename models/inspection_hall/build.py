@@ -261,13 +261,13 @@ def main():
                        "Complete authored hall. Closed configuration; no simulation poses. See source/design.json for parameters.")
     candidate = compose(output / "candidates/powered.usda", ["../saves/02_complete_closed.usda"],
                         "Powered mechanical candidate; geometry and static display retained together.")
-    control = compose(output / "candidates/motor_disabled.usda", ["powered.usda"],
+    control = compose(output / "candidates/motor_disabled.usda", ["./powered.usda"],
                       "Matched control. Only drive stiffness, damping and maxForce are overridden to zero.")
     prim = control.OverridePrim("/World/Joints/M01_Roof")
     for name in ("stiffness", "damping", "maxForce"):
         prim.CreateAttribute("drive:angular:physics:"+name, Sdf.ValueTypeNames.Float, custom=False).Set(0.0)
     control.GetRootLayer().Save()
-    compose(output / "scene.usda", ["saves/02_complete_closed.usda"], "Complete inspection hall with InspectionWide camera.")
+    compose(output / "scene.usda", ["./saves/02_complete_closed.usda"], "Complete inspection hall with InspectionWide camera.")
     check_anchors(complete)
     print(json.dumps({"scene": str(output / "scene.usda"),
                       "candidate": str(output / "candidates/powered.usda"),
