@@ -6,6 +6,7 @@
 # QC spheres, cameras, a BasisCurves ghost of the flow domain, and one RenderProduct per camera.
 import argparse
 import math
+import os
 import re
 import sys
 from pathlib import Path
@@ -22,7 +23,6 @@ from build_env import CFG as ENV  # noqa: E402
 from project_paths import ROOT, MODEL, MOTION_SETTINGS
 
 SCENES = {"reference": MODEL / "scenes" / "present.usda", "payload": MODEL / "scenes" / "present_payload.usda"}
-ENV_ASSET = "../assets/test_section.usda"
 
 # ---------------------------------------------------------------------------------------------
 # Config (cm unless noted)
@@ -226,25 +226,31 @@ def ahmed_mesh():
 
 
 # ---------------------------------------------------------------------------------------------
-def build(mode):
+def build(mode="reference", asset_path=None, destination=MODEL, lod="final"):
     import usdex.core as ux
     from pxr import Gf, Sdf, UsdGeom, UsdRender, Vt
 
     # Gf.Rotation() leaves its axis undefined, which intermittently authors NaN matrices.
     IDENTITY_ROT = Gf.Rotation(Gf.Vec3d(0, 0, 1), 0)
 
-    path = SCENES[mode]
+    destination = Path(destination).resolve()
+    path = destination / "scenes" / SCENES[mode].name
+    asset_path = destination / "assets" / "test_section.usda" if asset_path is None else Path(asset_path).resolve()
+    asset = os.path.relpath(asset_path, path.parent).replace("\\", "/")
     path.parent.mkdir(parents=True, exist_ok=True)
     stage = ux.createStage(str(path), "World", UsdGeom.Tokens.z, 0.01, "stagewright tools/build_present.py")
     stage.SetTimeCodesPerSecond(60)
     world = ux.defineXform(stage.GetDefaultPrim()).GetPrim()
 
     if mode == "reference":
-        env = ux.defineReference(world, "WindTunnel", ENV_ASSET)
+        env = ux.defineReference(world, "WindTunnel", asset)
     else:
-        env = ux.definePayload(world, "WindTunnel", ENV_ASSET)
+        env = ux.definePayload(world, "WindTunnel", asset)
     if not env:
-        raise RuntimeError(f"could not {mode} {ENV_ASSET}")
+        raise RuntimeError(f"could not {mode} {asset}")
+    housings = stage.GetPrimAtPath("/World/WindTunnel/Geometry/Tunnel/Housings")
+    if housings:
+        housings.GetVariantSets().GetVariantSet("lod").SetVariantSelection(lod)
 
     looks = ux.defineScope(world, "Looks").GetPrim()
 
@@ -394,6 +400,7 @@ def build(mode):
     if re.search(r"\bnan\b", path.read_text(encoding="utf-8"), re.IGNORECASE):
         raise RuntimeError(f"NaN authored in {path}")
     print("wrote", path)
+    return path
 
 
 def check_dolly(path, camera_name="Dolly", config=None):
@@ -477,8 +484,14 @@ def check_stilts(path, margin=2.0):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Build wind tunnel presentation scenes")
+    parser.add_argument("--out", type=Path, default=MODEL, help="model directory containing assets and scenes")
+    parser.add_argument("--asset", type=Path, help="environment asset (default: assets/test_section.usda under --out)")
+    parser.add_argument("--lod", choices=("coarse", "final"), default="final", help="sectional housing detail")
+    args = parser.parse_args()
     for mode in SCENES:
-        build(mode)
-    check_dolly(SCENES["reference"])
-    check_dolly(SCENES["reference"], "Orbit360", ORBIT)
-    check_stilts(SCENES["reference"])
+        path = build(mode, args.asset, args.out, args.lod)
+        if mode == "reference":
+            check_dolly(path)
+            check_dolly(path, "Orbit360", ORBIT)
+            check_stilts(path)

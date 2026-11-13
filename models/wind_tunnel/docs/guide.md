@@ -6,6 +6,32 @@ Setup, integration, validation boundaries and render controls for the first envi
 Run shell commands from the repository root. This is a conceptual presentation environment;
 it has not been run inside the external blueprint application.
 
+## Procedural candidates
+
+Build into an isolated model directory, then render through the existing CLI:
+
+```sh
+.venv/Scripts/python.exe tools/build_env.py --out build/candidates/sectional-housings
+.venv/Scripts/python.exe tools/build_present.py --out build/candidates/sectional-housings
+.venv/Scripts/python.exe tools/render.py --scene build/candidates/sectional-housings/scenes/present.usda --products Hero,Wake --out build/candidates/sectional-housings/render
+```
+
+The nozzle and collector jackets share one construction function: profiles define section
+stations, frames, panel bays and exposed braces. Edit their station spacing and depth in
+`CFG["housings"]` in `tools/build_env.py`. Named parts remain inspectable in USD.
+
+`/Environment/Geometry/Tunnel/Housings` has a native `lod` variant set, `coarse` and `final`.
+Both retain the assembly layout and bounds; coarse reduces curved detail and omits fasteners.
+Choose the variant in a separate presentation layer referencing the same asset:
+
+```sh
+.venv/Scripts/python.exe tools/build_present.py --out build/candidates/sectional-housings/coarse --asset build/candidates/sectional-housings/assets/test_section.usda --lod coarse
+```
+
+The presentation layer selects the variant before rendering; there is no automatic distance
+switching. Authoring and RTX rendering remain separate processes. Candidate outputs stay under
+ignored `build/`; accepted public media are unchanged.
+
 ## What was verified
 
 `tools/fit_check.py` composes the blueprint's own stage with the override and measures it. The full

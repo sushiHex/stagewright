@@ -2,6 +2,7 @@
 # textures in models/wind_tunnel/assets/textures/.
 #   python tools/build_env.py            build (textures, then the stage), then the containment check
 #   python tools/build_env.py check      containment check only, on the existing file
+#   python tools/build_env.py --out build/candidates/sectional-housings
 #
 # Units: centimetres, Z-up, flow runs along world -Y (nozzle upstream at +Y, collector at -Y).
 # Payload root is /Environment with an identity transform; everything, lights included, lives
@@ -18,6 +19,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Build the environment and check containment.")
     parser.add_argument("command", nargs="?", choices=("build", "check"), default="build",
                         help="build and check (default), or check the existing environment")
+    parser.add_argument("--out", type=Path, help="model directory containing assets and scenes")
     args = parser.parse_args()
 
 import numpy as np
@@ -78,6 +80,11 @@ CFG = {
     # One heavy portal at the settling chamber: two box columns, a header and knee braces.
     "chamber_portal": {"y": 1615.0, "col": 60.0, "depth": 50.0, "header": 60.0, "knee": 160.0},
     "collector_supports": {"y": (-1340.0, -1460.0)},  # bear on the collector ribs
+    # One sectional construction shared by both exterior jackets. Open bays expose the liner
+    # and frame; stations stay independent of tessellation and detail level.
+    "housings": {"panel_t": 6.0, "frame_half_w": 8.0, "gap": 4.0,
+                 "nozzle": {"stations": (825.0, 1030.0, 1280.0, 1535.0), "depth": 48.0},
+                 "collector": {"stations": (-1255.0, -1405.0, -1550.0), "depth": 140.0}},
     "honeycomb": {"y": 1555.0, "cell_side": 6.0, "cell_wall": 0.7,  # hex cell (cm), exaggerated to read on camera
                   "frame_w": 10.0, "frame_d": 14.0, "bays_x": 6, "bays_z": 3, "mullion_w": 8.0,
                   "light_y": 1535.0, "light_intensity": 1500.0,  # dim fill so the contraction is not a black hole
@@ -99,7 +106,7 @@ CFG = {
     },
     # Centred on the hero car's mid-wheelbase, Y 92.9 (models/wind_tunnel/docs/fit-check.md, section 4).
     "turntable": {"cx": 0.0, "cy": 93.0, "r": 500.0, "ring_w": 12.0, "top": 0.10, "ring_top": 0.15, "bottom": -10.0,
-                  "seam_w": 2.5},
+                  "seam_w": 2.5, "marking_inset": 20.0, "marking_w": 20.0, "marking_top": 0.20},
     # half_len 380 keeps the belt, its drums and end plates on the turntable (Y -321..507), well
     # inside the jet, while spanning the car (Y -154..351).
     "belt": {"hw": 50.0, "half_len": 380.0, "top": 0.30, "bottom": -3.0, "frame_w": 10.0, "frame_top": 0.25,
@@ -168,42 +175,42 @@ MATERIALS = {
 # Procedural textures computed in Warp and written through nvImageCodec.
 # Spectral noise is periodic, so each map repeats seamlessly.
 # ---------------------------------------------------------------------------------------------
-def tex_perf(n=1024, tile=40.0, pitch=4.0, hole_r=0.8, depth=0.15, edge=0.1, seed=11):
+def tex_perf(out, n=1024, tile=40.0, pitch=4.0, hole_r=0.8, depth=0.15, edge=0.1, seed=11):
     from texture_compute import material_maps
-    material_maps(TEX_DIR, "perf", 0, n, [tile, tile, pitch, hole_r, depth, edge], (2.0,), seed)
+    material_maps(out, "perf", 0, n, [tile, tile, pitch, hole_r, depth, edge], (2.0,), seed)
     return tile
 
 
-def tex_honeycomb(n=1024, s=4.0, kx=4, kz=7, wall=0.5):
+def tex_honeycomb(out, n=1024, s=4.0, kx=4, kz=7, wall=0.5):
     from texture_compute import material_maps
     tx, tz = 3 * s * kx, math.sqrt(3) * s * kz
-    material_maps(TEX_DIR, "honeycomb", 1, n, [tx, tz, s, wall])
+    material_maps(out, "honeycomb", 1, n, [tx, tz, s, wall])
     return tx, tz
 
 
-def tex_floor(name, n, tile, base, mottle, grain, rough, rough_var, seam_w, seed):
+def tex_floor(out, name, n, tile, base, mottle, grain, rough, rough_var, seam_w, seed):
     from texture_compute import material_maps
-    material_maps(TEX_DIR, name, 2, n, [tile, tile, base, mottle, grain, rough, rough_var, seam_w],
+    material_maps(out, name, 2, n, [tile, tile, base, mottle, grain, rough, rough_var, seam_w],
                   (3.2, 2.2, 0.6, 1.6), seed)
     return tile
 
 
-def tex_belt(n=512, tile=20.0, grooves=10, seed=41):
+def tex_belt(out, n=512, tile=20.0, grooves=10, seed=41):
     from texture_compute import material_maps
-    material_maps(TEX_DIR, "belt", 3, n, [tile, tile, grooves], (1.0,), seed)
+    material_maps(out, "belt", 3, n, [tile, tile, grooves], (1.0,), seed)
     return tile
 
 
-def make_textures():
+def make_textures(out=TEX_DIR):
     """Writes every texture set; returns the tile sizes (cm per repeat) the UVs need."""
     hc = CFG["honeycomb"]
     return {
-        "perf": tex_perf(),
-        "honeycomb": tex_honeycomb(s=hc["cell_side"], wall=hc["cell_wall"]),
-        "concrete": tex_floor("concrete", 2048, 600.0, 0.12, 0.16, 0.05, 0.50, 0.12, 1.2, 21),
-        "epoxy": tex_floor("epoxy", 2048, 400.0, 0.18, 0.05, 0.015, 0.30, 0.06, 0.8, 31),
-        "turntable": tex_floor("turntable", 1024, 300.0, 0.22, 0.03, 0.01, 0.26, 0.05, 0.0, 51),
-        "belt": tex_belt(),
+        "perf": tex_perf(out),
+        "honeycomb": tex_honeycomb(out, s=hc["cell_side"], wall=hc["cell_wall"]),
+        "concrete": tex_floor(out, "concrete", 2048, 600.0, 0.12, 0.16, 0.05, 0.50, 0.12, 1.2, 21),
+        "epoxy": tex_floor(out, "epoxy", 2048, 400.0, 0.18, 0.05, 0.015, 0.30, 0.06, 0.8, 31),
+        "turntable": tex_floor(out, "turntable", 1024, 300.0, 0.22, 0.03, 0.01, 0.26, 0.05, 0.0, 51),
+        "belt": tex_belt(out),
     }
 
 
@@ -267,6 +274,65 @@ def u_path(y, hw, h, r, n_arc=24):
     """The U profile as a 3D polyline in the plane at y (left foot, over the top, right foot)."""
     p = ml.u_profile(hw, h, r, n_arc)
     return np.stack([p[:, 0], np.full(len(p), y), p[:, 1]], 1)
+
+
+def housing_parts(profile, layout, base, lod):
+    """Profile -> stations -> frames and panel bays. Returns named, material-bound solids."""
+    cfg = CFG["housings"]
+    stations, depth = layout["stations"], layout["depth"]
+    thick, half, gap = (cfg[k] for k in ("panel_t", "frame_half_w", "gap"))
+    arc = 6 if lod == "coarse" else 12
+
+    def strip(ys, low, high, section=slice(None)):
+        loops = []
+        for y in ys:
+            inner = ring(y, *profile(y), base + low, arc)[section]
+            outer = ring(y, *profile(y), base + high, arc)[section]
+            loops.append(np.vstack([inner, outer[::-1]]))
+        pts, faces = ml.loft(loops, closed=True)
+        width = len(loops[0])
+        # Close the sheet thickness with quads. A single concave U-shaped cap can be
+        # triangulated across the duct opening by a renderer.
+        for j in range(width // 2 - 1):
+            cap = [j + 1, j, width - 1 - j, width - 2 - j]
+            faces.append(cap)
+            faces.append([v + len(pts) - width for v in cap[::-1]])
+        if ml.signed_volume(pts, faces) < 0:
+            faces = [face[::-1] for face in faces]
+        return pts, faces
+
+    for i, y in enumerate(stations):
+        yield f"Frame_{i:02d}", "Steel", strip((y - half, y + half), 1.0, depth)
+        hw, h, _ = profile(y)
+        for side, sign in (("Left", -1), ("Right", 1)):
+            x = sign * (hw + base + depth / 2)
+            yield f"Seat_{i:02d}_{side}", "Steel", ml.chamfered_box(
+                (x - depth / 2 - 5, y - half - 12, 0.0),
+                (x + depth / 2 + 5, y + half + 12, 4.0), 1.0)
+            if lod == "final":
+                for j, z in enumerate((h * 0.32, h * 0.68)):
+                    yield f"Fastener_{i:02d}_{side}_{j}", "Metal", ml.ngon_prism(
+                        (sign * (hw + base + depth), y, z), (sign, 0, 0), 3.0, 2.0, n=6, chamfer=0.4)
+
+    sections = {"Left": slice(0, arc + 2), "Roof": slice(arc + 1, arc + 3),
+                "Right": slice(arc + 2, None)}
+    for i, (start, end) in enumerate(zip(stations, stations[1:])):
+        direction = math.copysign(1, end - start)
+        ys = np.linspace(start + direction * (half + gap), end - direction * (half + gap), 9)
+        yield f"Liner_{i:02d}", "SettlingDark", strip(ys, 0.5, 1.0)
+        for side, section in sections.items():
+            # The first service bay opens over the shoulder so its depth reads from the
+            # existing cameras; the far end opens on the opposite side.
+            opened = (side in ("Left", "Roof") and i == 0) or (side == "Right" and i == len(stations) - 2)
+            if opened and side != "Roof":
+                sign = -1 if side == "Left" else 1
+                ends = []
+                for y, fraction in ((start, 0.25), (end, 0.72)):
+                    hw, h, _ = profile(y)
+                    ends.append((sign * (hw + base + depth / 2), y, fraction * h))
+                yield f"Brace_{i:02d}_{side}", "Steel", member(*ends, 14.0)
+            elif not opened:
+                yield f"Panel_{i:02d}_{side}", "Shell", strip(ys, depth - thick, depth, section)
 
 
 def honeycomb_mesh(tile):
@@ -506,6 +572,9 @@ def build_parts(tiles):
     part("Floor", "Turntable", "Turntable", ml.disc(cx, cy, tt["top"], tt["bottom"], R - tt["ring_w"]),
          tile=tiles["turntable"], origin=(cx, cy, 0.0))
     part("Floor", "TurntableRing", "Metal", ml.annulus(cx, cy, tt["ring_top"], tt["bottom"], R - tt["ring_w"], R))
+    part("Floor", "TurntableMarking", "Accent",
+         ml.annulus(cx, cy, tt["marking_top"], tt["top"],
+                    R - tt["marking_inset"] - tt["marking_w"], R - tt["marking_inset"]))
     sw = tt["seam_w"]
     part("Floor", "TurntableSeams", "Gap",
          ml.annulus(cx, cy, 0.08, -1.0, R, R + sw),
@@ -690,7 +759,7 @@ def light_grid():
 # ---------------------------------------------------------------------------------------------
 # Authoring
 # ---------------------------------------------------------------------------------------------
-def build():
+def build(destination=MODEL):
     import usdex.core as ux
     from pxr import Gf, Sdf, UsdGeom, Vt
 
@@ -698,9 +767,10 @@ def build():
     IDENTITY_ROT = Gf.Rotation(Gf.Vec3d(0, 0, 1), 0)
     xf = lambda prim, pos, rot=IDENTITY_ROT: ux.setLocalTransform(  # noqa: E731
         prim, Gf.Transform(Gf.Vec3d(*pos), rot, Gf.Vec3d(1, 1, 1)))
-    tiles = make_textures()
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    stage = ux.createStage(str(OUT), "Environment", UsdGeom.Tokens.z, 0.01,
+    out = Path(destination).resolve() / "assets" / "test_section.usda"
+    tiles = make_textures(out.parent / "textures")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    stage = ux.createStage(str(out), "Environment", UsdGeom.Tokens.z, 0.01,
                            "stagewright tools/build_env.py")
     stage.SetTimeCodesPerSecond(60)
     root = ux.defineXform(stage.GetDefaultPrim()).GetPrim()  # Scope -> Xform, identity
@@ -725,25 +795,46 @@ def build():
                 raise RuntimeError(f"texture hookup failed for {name}")
         mats[name] = mat
 
+    def write_mesh(parent, name, mb, mat):
+        counts, idx, pts, nval, nidx = mb.arrays()
+        st = mb.st()
+        uvs = None if st is None else ux.Vec2fPrimvarData(
+            UsdGeom.Tokens.faceVarying, Vt.Vec2fArray.FromNumpy(st[0]), Vt.IntArray.FromNumpy(st[1]))
+        mesh = ux.definePolyMesh(
+            parent, ux.getValidChildName(parent, name),
+            Vt.IntArray.FromNumpy(counts), Vt.IntArray.FromNumpy(idx), Vt.Vec3fArray.FromNumpy(pts),
+            normals=ux.Vec3fPrimvarData(UsdGeom.Tokens.faceVarying, Vt.Vec3fArray.FromNumpy(nval),
+                                        Vt.IntArray.FromNumpy(nidx)),
+            uvs=uvs)
+        if not mesh:
+            raise RuntimeError(f"definePolyMesh failed for {parent.GetPath()}/{name}")
+        lo, hi = mb.extent()
+        mesh.GetExtentAttr().Set(Vt.Vec3fArray([Gf.Vec3f(*lo.tolist()), Gf.Vec3f(*hi.tolist())]))
+        ux.bindMaterial(mesh.GetPrim(), mats[mat])
+
     geo = ux.defineXform(root, "Geometry").GetPrim()
     for group, items in build_parts(tiles).items():
         gprim = ux.defineXform(geo, ux.getValidChildName(geo, group)).GetPrim()
         for name, (mb, mat) in items.items():
-            counts, idx, pts, nval, nidx = mb.arrays()
-            st = mb.st()
-            uvs = None if st is None else ux.Vec2fPrimvarData(
-                UsdGeom.Tokens.faceVarying, Vt.Vec2fArray.FromNumpy(st[0]), Vt.IntArray.FromNumpy(st[1]))
-            mesh = ux.definePolyMesh(
-                gprim, ux.getValidChildName(gprim, name),
-                Vt.IntArray.FromNumpy(counts), Vt.IntArray.FromNumpy(idx), Vt.Vec3fArray.FromNumpy(pts),
-                normals=ux.Vec3fPrimvarData(UsdGeom.Tokens.faceVarying, Vt.Vec3fArray.FromNumpy(nval),
-                                            Vt.IntArray.FromNumpy(nidx)),
-                uvs=uvs)
-            if not mesh:
-                raise RuntimeError(f"definePolyMesh failed for {group}/{name}")
-            lo, hi = mb.extent()
-            mesh.GetExtentAttr().Set(Vt.Vec3fArray([Gf.Vec3f(*lo.tolist()), Gf.Vec3f(*hi.tolist())]))
-            ux.bindMaterial(mesh.GetPrim(), mats[mat])
+            write_mesh(gprim, name, mb, mat)
+
+    tunnel = stage.GetPrimAtPath("/Environment/Geometry/Tunnel")
+    housings = ux.defineXform(tunnel, "Housings").GetPrim()
+    variants = housings.GetVariantSets().AddVariantSet("lod")
+    c = CFG["collector"]
+    collector_profile = lambda y: (c["throat_hw"], c["throat_h"], c["throat_r"])
+    for lod in ("coarse", "final"):
+        variants.AddVariant(lod)
+        variants.SetVariantSelection(lod)
+        with variants.GetVariantEditContext():
+            for name, profile, layout, base in (
+                ("Nozzle", nozzle_size, CFG["housings"]["nozzle"], CFG["nozzle"]["wall"]),
+                ("Collector", collector_profile, CFG["housings"]["collector"], 2 * c["lip_r"]),
+            ):
+                assembly = ux.defineXform(housings, name).GetPrim()
+                for part_name, mat, geom in housing_parts(profile, layout, base, lod):
+                    write_mesh(assembly, part_name, ml.MeshBuilder().add(*geom), mat)
+    variants.SetVariantSelection("final")
 
     L = CFG["lights"]
     lights = ux.defineXform(root, "Lights").GetPrim()
@@ -781,9 +872,10 @@ def build():
     xf(cfill.GetPrim(), (0, cc["fill_y"], 0.5 * cc["throat_h"]), Gf.Rotation(Gf.Vec3d(1, 0, 0), -90))
 
     ux.saveStage(stage, comment="Open-jet test section environment. Generated; do not hand-edit.")
-    if re.search(r"\bnan\b", OUT.read_text(encoding="utf-8"), re.IGNORECASE):
-        raise RuntimeError(f"NaN authored in {OUT}")
-    print("wrote", OUT)
+    if re.search(r"\bnan\b", out.read_text(encoding="utf-8"), re.IGNORECASE):
+        raise RuntimeError(f"NaN authored in {out}")
+    print("wrote", out)
+    return out
 
 
 # ---------------------------------------------------------------------------------------------
@@ -812,7 +904,7 @@ def _dist_to_poly(pt, poly):
     return best
 
 
-def check():
+def check(path=OUT):
     from pxr import Gf, Usd, UsdGeom
 
     d = CFG["domain"]
@@ -848,7 +940,7 @@ def check():
     print("        jet's fourth wall, so this is the blueprint's own ground offset, not a clash.")
 
     print("\n== Environment geometry vs flow domain (world AABB overlap) ==")
-    stage = Usd.Stage.Open(str(OUT))
+    stage = Usd.Stage.Open(str(path))
     root = stage.GetDefaultPrim()
     xf = UsdGeom.XformCache()
     m = xf.GetLocalToWorldTransform(root)
@@ -879,6 +971,8 @@ def check():
 
 
 if __name__ == "__main__":
+    destination = MODEL if args.out is None else args.out
+    path = destination.resolve() / "assets" / "test_section.usda"
     if args.command == "build":
-        build()
-    sys.exit(0 if check() else 1)
+        path = build(destination)
+    sys.exit(0 if check(path) else 1)
