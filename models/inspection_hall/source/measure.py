@@ -252,6 +252,7 @@ def assess(result, out, design, control=False):
     report = {
         "result_directory": str(result), "frozen_input_sha256": digest,
         "poses_sha256": hashlib.sha256((result / "recording/poses.npz").read_bytes()).hexdigest(),
+        "design_revision": p.get("revision"), "useful_operation": c,
         "samples": len(rows), "seconds": [float(seconds[0]), float(seconds[-1])],
         "hold_samples": len(final), "hold_seconds": [float(seconds[hold_start]), float(seconds[-1])],
         "pose_devices": record["pose_devices"], "packages": record["packages"],
