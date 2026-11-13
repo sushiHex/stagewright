@@ -138,6 +138,7 @@ def tube(stage, path, a, b, radius, mat):
 def mesh(stage, path, points, faces, mat):
     g = UsdGeom.Mesh.Define(stage, path)
     g.CreatePointsAttr(points)
+    g.CreateExtentAttr(UsdGeom.PointBased.ComputeExtent(g.GetPointsAttr().Get()))
     g.CreateFaceVertexCountsAttr([len(f) for f in faces])
     g.CreateFaceVertexIndicesAttr([i for face in faces for i in face])
     g.CreateSubdivisionSchemeAttr("none")
