@@ -42,8 +42,21 @@ records body poses and exports `recording/replay.usdc` in each result directory.
 It does not evaluate the physics of the added buildings.
 
 The accepted study required at least 95% of Court C01 to be clear during the final
-two seconds of its recording. That condition uses a conservative geometric measure.
-The engine's body-motion summary does not measure that opening condition.
+two seconds of its recording. The engine's body-motion summary does not measure that
+opening condition. Measure it on the CPU from each result, into a new directory:
+
+```powershell
+.venv/Scripts/python.exe models/courtyard/source/measure.py build/courtyard-powered build/courtyard-powered-measure
+.venv/Scripts/python.exe models/courtyard/source/measure.py build/courtyard-control build/courtyard-control-measure
+```
+
+`summary.json` states whether the measure established the condition in
+`source/parameters.json`, and `clearance.csv` holds every recorded sample. The measure
+projects each prim's bound, so it is a conservative lower bound on open area: a pass
+establishes the condition, and a fail means only that this measure did not establish it.
+The angle columns are each body's world-frame rotation about X, not a joint angle. A
+recording shorter than the hold window is refused. The powered run should establish the
+condition and the control should not.
 
 ## View and capture the replay
 
