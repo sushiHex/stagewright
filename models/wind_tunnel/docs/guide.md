@@ -28,9 +28,9 @@ In summary:
   Z 0.5 cm (the domain floor sits 4 cm below the floor top, which is the blueprint's own
   convention). The domain sits inside the jet: the nozzle mesh's most downstream point (its rolled
   lip) is 332.5 cm upstream of the domain's inlet face, and the collector mesh's most upstream point
-  is 450.0 cm downstream of its outlet face. The cross-section clearances, 181.0 cm at the nozzle
-  and 256.0 cm at the collector, are the smallest distances from any vertex of that mesh to the
-  domain's X-Z rectangle (vertex-based, so the rounded corners are measured at their chords).
+  is 450.0 cm downstream of its outlet face. The cross-section clearances, 152.0 cm at the nozzle
+  and 252.0 cm at the collector, are the smallest distances from the projected mesh triangles to
+  the domain's X-Z section, including straight spans and crossings.
 - **Hero car fit.** With the blueprint's hero car geometry fetched, the car sits inside the domain
   and on the turntable (farthest point 257.6 cm from the centre of a 500 cm radius), the turntable
   is centred on its mid-wheelbase, the centre belt runs between the wheels for the car's full
