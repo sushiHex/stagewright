@@ -1,9 +1,25 @@
 # Handoff
 
-State of the repo as of 2026-11-05, for the next session picking it up cold. Read `CLAUDE.md` first,
+State of the repo as of 2026-11-13, for the next session picking it up cold. Read `CLAUDE.md` first,
 then `docs/plan.md`, then this file.
 
 ## Where things stand
+
+- 2026-11-13: `main` holds three models. The wind tunnel now includes the sectional duct housings
+  and the turntable marking; its asset, scenes, fit report and public media were regenerated in the
+  documented rebuild order (Issues #3 and #4). The README's hosted 360 movie is a GitHub attachment
+  and still needs a manual upload to match `models/wind_tunnel/media/`. COURTYARD and the hall
+  write `./`-anchored layer paths. COURTYARD ships its opening measure
+  (`models/courtyard/source/measure.py`); a fresh powered recording of the `main` build established
+  the declared condition and its motor-disabled control did not. The hall's `assessment.json`
+  records the design revision and the useful-operation thresholds it applied. The strict fit check
+  runs again, and the share archives include the hall and the COURTYARD measure.
+  [acceptance-lab](https://github.com/sushiHex/acceptance-lab) holds one written contract per
+  model and its read-only audit accepts all three as built from this revision. The contracts stay
+  in that repository so the judge is independent of the generators; rerun its `audit.py` after a
+  change to a generator's stage metadata, layer paths or outer geometry. Open: Issue #14 (desktop
+  responsiveness, no fix established), #49 (hall presentation, awaiting owner review) and #51.
+  Older entries below are history; where they say public media is unchanged, this entry supersedes.
 
 - Inspection hall source is under `models/inspection_hall/`. Five files reuse the shipped
   COURTYARD helpers and existing engine. A fresh shipped-source powered/control baseline passes
