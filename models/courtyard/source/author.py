@@ -831,7 +831,7 @@ def detail():
     compose("saves/04_workshop.usda",layers,"04 | Proving mule, technicians, workshop fitout and site detail")
     compose("candidates/candidate_002.usda",layers,"Complete detailed workshop candidate")
     control=new_stage("candidates/candidate_002_motor_disabled.usda")
-    control.GetRootLayer().subLayerPaths=["candidate_002.usda"]
+    control.GetRootLayer().subLayerPaths=["./candidate_002.usda"]
     prim=control.OverridePrim("/World/Joints/M01_GroundToYoke")
     for name in ["stiffness","damping","maxForce"]:
         prim.CreateAttribute("drive:angular:physics:"+name,Sdf.ValueTypeNames.Float,custom=False).Set(0.0)

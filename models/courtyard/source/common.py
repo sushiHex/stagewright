@@ -188,7 +188,7 @@ def save_pass(stage, number, slug, title, change):
     previous = "04_workshop.usda" if number == 5 else CFG["saves"][str(number-1)]
     filename = CFG["saves"][str(number)]
     composed = fresh("saves/"+filename)
-    composed.GetRootLayer().subLayerPaths = [f"../layers/{number:02}_{slug}.usda", previous]
+    composed.GetRootLayer().subLayerPaths = [f"../layers/{number:02}_{slug}.usda", "./"+previous]
     composed.GetRootLayer().documentation = "COURTYARD / NORTH LIFT. Static additions. " + title
     composed.GetRootLayer().customLayerData = {
         "constructionPass": number,

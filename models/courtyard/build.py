@@ -7,7 +7,8 @@ import sys
 
 def relative(source, directory):
     try:
-        return os.path.relpath(source, directory).replace("\\", "/")
+        path = os.path.relpath(source, directory).replace("\\", "/")
+        return path if path.startswith("../") else "./" + path  # anchored, never a search path
     except ValueError:
         return source.as_posix()
 
