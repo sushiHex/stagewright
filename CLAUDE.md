@@ -1,10 +1,69 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # stagewright
 
-Parametric OpenUSD worlds, built from source. The wind-tunnel model lives under
-`models/wind_tunnel/`; the accepted COURTYARD generator and build guide live under
-`models/courtyard/`. Shared helpers and command-line tools stay in `tools/`.
+Parametric OpenUSD worlds, built from source. A prompt shapes editable Python generators; NVIDIA
+libraries build the scene, simulate its mechanisms and render the result. Models live under
+`models/<name>/`: `wind_tunnel` (assets, scenes, docs, public media), `courtyard` (the accepted
+COURTYARD generator and build guide) and `inspection_hall` (built on the COURTYARD helpers). Shared
+helpers and command-line tools stay in `tools/`. The mecha-factory study (Issue #51) is private work
+under ignored `build/`; it is not a packaged model.
 
-The first model is a presentation-quality open-jet automotive wind tunnel test section, authored in OpenUSD and rendered
+## Start here
+
+- Read `docs/plan.md` (active experiment first), then the top of `docs/handoff.md`. The handoff is a
+  long reverse-chronological log; read only "Where things stand" unless a task needs older history.
+  GitHub Issues and Milestones hold the live status.
+- **Check the checkout before trusting local files.** Run `git fetch` and
+  `git rev-list --left-right --count HEAD...origin/main`. The owner's primary checkout can sit on an
+  old branch, behind `main`, with preserved uncommitted edits and untracked copies of files that
+  have since merged. Compare with `git show origin/main:<path>` when a file looks stale or missing.
+  Never reset, stash, clean or commit that whole tree. Start each change in a new worktree and
+  branch from `origin/main`, and carry over only the files the change needs.
+- Everything under `build/` is ignored and private: `build/experiments/` (frozen trial inputs and
+  records), `build/candidates/` (review pages and media), `build/checks/` (evidence and probes),
+  `build/private/` (renders showing the blueprint's own car), `build/envs/` (optional environments).
+  Do not publish, commit or quote measurements from it.
+
+## Architecture
+
+The harness is a chain of small CLIs that exchange files. No process hosts two runtimes.
+
+| Process | Python | May import | Tools |
+|---|---|---|---|
+| Author, pack, measure | `.venv` | `pxr` / `usdex` (from `usd-exchange`), Warp, numpy | `build_env.py`, `build_present.py`, `models/*/build.py`, `physics_usd.py`, `publish.py`, `sample_transforms.py`, `viewer_scene.py`, `fit_check.py` |
+| Render, encode | `.venv` | `ovrtx` / `ovstage`, codecs; never `pxr` | `rtx.py`, `render.py`, `render_motion.py`, `smoke.py render`, `observe.py` |
+| Physics | `build/envs/physics` | `ovphysx`, `ovstage`; no `pxr` | `simulate.py` |
+
+A render tool that needs authoring runs it in a child process (`render_motion.py --snapshot-poses`
+calls `sample_transforms.py`; `observe.py` calls `viewer_scene.py`). `engine.py` runs in the author
+process and starts the physics worker with the Python given by `--physics-python`.
+
+The recorded-motion flow, used by every mechanism study:
+
+1. A generator writes a static scene plus `candidates/<name>.usda` and a matched motor-disabled
+   control. The control changes only drive stiffness, damping and maximum force.
+2. `tools/engine.py <candidate> <new-dir> --physics-python ...` packs an immutable `input.usdz`,
+   runs `simulate.py`, and writes `recording/poses.npz`, `recording/replay.usdc`, `worker.log` and
+   `feedback.json` (per-body travel and rotation only, not a verdict). It refuses an existing
+   destination.
+3. The model's own measure script (`models/courtyard/source/measure.py`,
+   `models/inspection_hall/source/measure.py`) tests the declared operating condition on the CPU
+   from the frozen USD and recorded poses. Both use conservative projected bounds: a pass
+   establishes the condition, a fail means only that the measure did not establish it.
+4. A view root sublayers the replay above the display scene and copies the replay's stage metadata.
+   `render_motion.py --snapshot-poses` renders each recorded pose through a fresh stage;
+   a second `--no-render --encode` call builds the MP4. See `docs/recorded-pose-capture.md`.
+
+`tools/rtx.py` is the only layer over ovrtx/ovstage: `converge()` steps a product until the frame
+reports converged and raises if a capture does not. Every GPU entry point constructs
+`gpu_work.GpuPacer` (stop file, priority, affinity, pacing between completed native calls).
+`tools/project_paths.py` holds the default model and the per-product motion cadence; there is no
+model registry. `publish.py` and `observe.py` form the optional live observer (`docs/live-viewer.md`).
+
+The wind-tunnel model is a presentation-quality open-jet automotive wind tunnel test section, authored in OpenUSD and rendered
 headless with NVIDIA RTX (`ovrtx`). It is built to drop into the environment slot of NVIDIA's
 real-time wind tunnel blueprint (`NVIDIA-Omniverse-blueprints/digital-twins-for-fluid-simulation`)
 through one override layer. The plan and task list are in `docs/plan.md`. Read it before starting work.
@@ -30,7 +89,14 @@ matters. Tests serve the implementation; they do not drive speculative architect
   fallbacks or release infrastructure without a demonstrated need.
 - Existing checks are tools to use when relevant, not a checklist to expand or rerun for every edit.
 - Prefer video when showing results with motion, and looping playback for mini demos. Present local
-  files with their full absolute paths.
+  files with their full absolute paths. Use full absolute paths as link labels when possible.
+- For comparisons, use one aligned fixed view and step through the saved passes. Keep the
+  lossless source images and avoid camera moves. Prefer image quality over small media files.
+  Use a flipbook cadence, selectable pass buttons and a clear active state. Retain meaningful
+  intermediate complete saves during future construction; do not invent construction history.
+  Every comparison step must show a visible change. Omit saves that repeat the same visible state.
+- Physics demonstrations must tell the story established by the environment. Give each mechanism
+  a clear role in the scene's assembly, service, operation or testing.
 
 Preserve the hard rules below and the separation of authoring and rendering processes.
 
@@ -71,6 +137,17 @@ execution feedback. Preserve the initial authored candidate before physical eval
 evaluated revision and the actual feedback consumed. This measures construction with execution
 feedback; later human or peer coaching remains a separately labelled iteration. The viewer stays
 an observer. Keep this permission and the tool contract in the declared inputs.
+
+## Work planning
+
+When proposing a work scope or PM next steps, aim for at least four concrete tasks.
+Keep each task tied to a useful outcome; avoid padding the scope or adding speculative work.
+
+Spend the session model on planning, briefs, independent assessment of results and review.
+Construction runs as a separate clean trial (above). Before committing to a design or a causal
+diagnosis, have a second model attack it and record where the two disagree. A plan names the one
+measured bottleneck or owner request it serves, the single change to try, the check that would
+reject it and the evidence to keep.
 
 ## GitHub workflow
 
@@ -135,6 +212,28 @@ uv pip install --python .venv/Scripts/python.exe -r requirements.txt
 .venv/Scripts/python.exe tools/smoke.py render
 ```
 
+Build a model and run one check at a time; none of these is a suite to run after every edit.
+
+```
+.venv/Scripts/python.exe tools/build_env.py                      # wind tunnel asset; textures use the GPU
+.venv/Scripts/python.exe tools/build_present.py                  # its presentation roots
+.venv/Scripts/python.exe models/courtyard/build.py --out build/courtyard
+.venv/Scripts/python.exe -I -B models/inspection_hall/build.py --out build/inspection-hall
+.venv/Scripts/nvidia_usd_validate.exe models/wind_tunnel/assets/test_section.usda
+.venv/Scripts/python.exe tools/fit_check.py --strict             # needs external/blueprint
+.venv/Scripts/python.exe tools/check_presentation.py             # authored motion and framing, CPU
+.venv/Scripts/python.exe tools/check_gpu_work.py                 # pacing, stop file, affinity; CPU only
+.venv/Scripts/python.exe tools/check_compute.py                  # Warp numerics and codecs, GPU
+.venv/Scripts/python.exe tools/check_loop.py                     # Orbit360 seam, after a full render
+.venv/Scripts/python.exe tools/render.py --products Hero --res 960x540 --spp 64
+.venv/Scripts/python.exe tools/render_motion.py --frames 0,60,120 --out build/<new-dir>
+```
+
+Preview a bounded `--frames` selection before any full sequence. Only the complete canonical
+Dolly and Orbit360 sequences write `build/out/*.mp4`, which `build_media.py` copies to public media;
+custom scenes need their own `--out`. The full wind-tunnel rebuild order is in `docs/handoff.md`
+("Rebuild from scratch"). Model guides hold each model's physics and capture commands.
+
 PNG/JPEG writes use `tools/image_io.py` (nvImageCodec), including the smoke test and fixed
 presentation outputs in `tools/build_media.py`. MP4 uses PyNvVideoCodec with NVENC and its
 libav-based muxer; the ffmpeg executable is needed only for `tools/render_motion.py --encode --gif`.
@@ -194,8 +293,9 @@ dependency, not a completed hall, loaded mechanism, structure or model-construct
   correctness or integration. Documentation-only changes do not require asset validation.
 - Author with `pxr` and render with ovrtx in **separate processes**, since ovrtx bundles its own USD
   runtime.
-- Always set `omni:rtx:rendermode = "PathTracing"` on the RenderProduct (ovrtx issue #5: black frames
-  on Ampere).
+- Final captures use `omni:rtx:rendermode = "PathTracing"` on the RenderProduct. The upstream ovrtx
+  issue #5 reports black RT2 output on Linux/Ampere. Local Windows/Ampere RT2 smoke and hall-still
+  probes produce lit output, but final-image parity and motion quality remain unproved. See Issue #8.
 - The first run compiles shaders and is slow. Later runs use the cache.
 - **Camera motion:** author the camera as time samples, then per frame call
   `population.update_from_usd_time(stage, ordinal=n, time=frame / tcps)` (time is in SECONDS),
@@ -218,6 +318,14 @@ dependency, not a completed hall, loaded mechanism, structure or model-construct
   the blueprint override must use the explicit `payload = [...]` list-op.
 - **Wind-tunnel validator:** the rule that wants USDA arrays over 64 elements stored as binary cannot
   pass while those assets stay USDA text. It is accepted. Every other wind-tunnel rule must be clean.
-  COURTYARD preserves the accepted source and its inherited validation findings, listed in its model
-  guide. Do not claim that COURTYARD passes the default validator preset.
+  COURTYARD and the inspection hall preserve accepted source with validation findings listed in
+  their model guides. Do not claim that either passes the default validator preset.
+- **Never open a second USD source on a populated ovstage Stage.** `open_usd` keeps prior prims and
+  attributes. Use a fresh Stage per source, as the shared loaders do.
+- **Write generated layer paths anchored**, as `./x` or `../x`. A bare `x` or `dir/x` is a search
+  path, and a strict bundle walk refuses it.
+- Run `fit_check.py` only where `external/blueprint` is a real directory under the checkout. Through
+  a junction or symlink its path filter misfires and reports a false failure.
+- Retained-stage time updates were unreliable for recorded rigid-body replays. Use
+  `--snapshot-poses` for them; the default time-update path remains for authored camera motion.
 - Windows, Python 3.13 (`python`, not `python3`). Use forward slashes in paths.
