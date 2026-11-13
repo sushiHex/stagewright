@@ -15,7 +15,7 @@ This is a conceptual presentation environment. The check covers composition, tra
 | Loaded payload arcs: one arc to test_section.usda:/Environment, old env layer unused | **PASS** | [('test_section.usda', '/Environment')] |
 | /World/WindTunnel local-to-world is identity | **PASS** |  |
 | No composition errors from our environment | **PASS** | 1 error(s) on the stage, 0 from the environment |
-| Environment asset attributes all resolve | **PASS** | 0 unresolved in /World/WindTunnel; 20 on the whole stage |
+| Environment asset attributes all resolve | **PASS** | 0 unresolved in /World/WindTunnel; 18 on the whole stage |
 | /World/CAE composed transform matches Base.usda source values | **PASS** |  |
 | Domain recomputed from source agrees with CLAUDE.md | **PASS** | X -144.0..144.0, Y -650.0..430.0, Z -4.0..248.0 |
 | Environment authored extents match their points | **PASS** | 0.0000 cm |
@@ -57,7 +57,7 @@ After loading `/World/WindTunnel`, its payload arcs are `[('test_section.usda', 
 
 ### Composition errors and missing assets (stage fully loaded)
 
-- Composition error, **git-lfs pointer (file present, content not fetched)**: `Could not open asset @external/blueprint/source/specializations/auto-aero/data/low_res/detailed_car_510/aero_suv_low.ply@ for payload introduced by @external/blueprint/source/specializations/auto-aero/stages/layers/CarCFD.usda@</World/CarCFD{Rims=Standard}{Mirrors=On}{Spoiler=On}{Ride_Height=High}> -- Cannot determine `
+- Composition error, **git-lfs pointer (file present, content not fetched)**: `Could not open asset @external/blueprint/source/specializations/auto-aero/data/low_res/detailed_car_510/aero_suv_low.ply@ for payload introduced by @external/blueprint/source/specializations/auto-aero/stages/layers/CarCFD.usda@</World/CarCFD{Rims=Standard}{Mirrors=On}{Spoiler=On}{Ride_Height=High}> -- Cannot determine file`
 
 Asset-valued attributes that do not resolve to real content, by owner:
 
@@ -68,7 +68,7 @@ Asset-valued attributes that do not resolve to real content, by owner:
 | `/World/CAE` | unresolved | 2 | `/World/CAE/PlanarSlice_VelocityMagnitude/Materials/UnlitScalarColor/Shader.inputs:lut = @cae/colormaps/gist_rainbow.png@` |
 | `/World/CarHero` | MDL or shader search path (resolved by the renderer, not by Ar) | 4 | `/World/CarHero/Looks/Plastic_Black/Shader.info:mdl:sourceAsset = @OmniPBR.mdl@` |
 | `/World/CarHero` | git-lfs pointer (file present, content not fetched) | 1 | `/World/CarHero/Looks/Screen/Shader.inputs:emissive_mask_texture = @./Textures/ConceptCar_interiorScreenMat_emissive.1002.png@` |
-| `/World/CarHero` | unresolved | 3 | `/World/CarHero/Looks/Plastic_White_Glossy/Shader.info:mdl:sourceAsset = @../omniverse-content-production.s3.us-west-2.amazonaws.com/Material` |
+| `/World/CarHero` | unresolved | 1 | `/World/CarHero/Looks/Carbon_Fiber_Clearcoat/Shader.info:mdl:sourceAsset = @../omniverse-content-production.s3.us-west-2.amazonaws.com/Materi` |
 
 ## 2. CFD domain, recomputed from the blueprint source
 
@@ -89,7 +89,7 @@ Domain in world space (cm): **X -144.0..144.0, Y -650.0..430.0, Z -4.0..248.0**.
 
 ## 3. Environment bounds and containment
 
-- World bound of `/World/WindTunnel` (BBoxCache, useExtentsHint=False, purposes default+render): (-1230.0, -1630.0, -30.0)..(1230.0, 1730.0, 1230.0), from 45 renderable gprims.
+- World bound of `/World/WindTunnel` (BBoxCache, useExtentsHint=False, purposes default+render): (-1230.0, -1630.0, -30.0)..(1230.0, 1730.0, 1230.0), from 113 renderable gprims.
 - Authored extents agree with the points of every environment mesh: largest disagreement 0.0000 cm.
 - The environment bound encloses the domain in X, Y and Z-top: True (the domain floor at Z -4.0 sits 4.0 cm below the floor top, see below).
 
@@ -105,6 +105,7 @@ Every renderable environment gprim against the domain box (AABB):
 | `Geometry/Floor/Slab` | (-1200.0, -1600.0, -30.0)..(1200.0, 1700.0, 0.0) | (0.0, 0.0, 0.0) | overlaps only below Z 0.00 (floor insert, allowed) |
 | `Geometry/Floor/TestFloor` | (-700.0, -1150.0, -0.5)..(700.0, 1555.0, 0.1) | (0.0, 0.0, 0.0) | overlaps only below Z 0.05 (floor insert, allowed) |
 | `Geometry/Floor/Turntable` | (-488.0, -395.0, -10.0)..(488.0, 581.0, 0.1) | (0.0, 0.0, 0.0) | overlaps only below Z 0.10 (floor insert, allowed) |
+| `Geometry/Floor/TurntableMarking` | (-480.0, -387.0, 0.1)..(480.0, 573.0, 0.2) | (0.0, 0.0, 0.0) | overlaps only below Z 0.20 (floor insert, allowed) |
 | `Geometry/Floor/TurntableRing` | (-500.0, -407.0, -10.0)..(500.0, 593.0, 0.2) | (0.0, 0.0, 0.0) | overlaps only below Z 0.15 (floor insert, allowed) |
 | `Geometry/Floor/TurntableSeams` | (-502.5, -409.5, -1.0)..(502.5, 595.5, 0.1) | (0.0, 0.0, 0.0) | overlaps only below Z 0.12 (floor insert, allowed) |
 | `Geometry/Floor/WheelBeltFrames` | (-116.8, -89.5, -3.0)..(116.8, 275.4, 0.1) | (0.0, 0.0, 0.0) | overlaps only below Z 0.14 (floor insert, allowed) |
@@ -136,6 +137,73 @@ Every renderable environment gprim against the domain box (AABB):
 | `Geometry/Tunnel/CollectorTrim` | (-504.0, -1103.5, 0.0)..(504.0, -1095.5, 604.0) | (0.0, 445.5, 0.0) | clear |
 | `Geometry/Tunnel/Honeycomb` | (-650.0, 1555.0, 0.0)..(650.0, 1555.0, 799.9) | (0.0, 1125.0, 0.0) | clear |
 | `Geometry/Tunnel/HoneycombFrame` | (-651.0, 1541.0, 0.0)..(651.0, 1555.0, 800.9) | (0.0, 1111.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Brace_00_Left` | (-677.0, -1413.2, 117.7)..(-663.0, -1246.8, 367.3) | (519.0, 596.8, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Brace_01_Right` | (663.0, -1558.2, 117.7)..(677.0, -1396.8, 367.3) | (519.0, 746.8, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Fastener_00_Left_0` | (-742.0, -1257.6, 157.0)..(-740.0, -1252.4, 163.0) | (596.0, 602.4, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Fastener_00_Left_1` | (-742.0, -1257.6, 337.0)..(-740.0, -1252.4, 343.0) | (596.0, 602.4, 89.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Fastener_00_Right_0` | (740.0, -1257.6, 157.0)..(742.0, -1252.4, 163.0) | (596.0, 602.4, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Fastener_00_Right_1` | (740.0, -1257.6, 337.0)..(742.0, -1252.4, 343.0) | (596.0, 602.4, 89.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Fastener_01_Left_0` | (-742.0, -1407.6, 157.0)..(-740.0, -1402.4, 163.0) | (596.0, 752.4, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Fastener_01_Left_1` | (-742.0, -1407.6, 337.0)..(-740.0, -1402.4, 343.0) | (596.0, 752.4, 89.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Fastener_01_Right_0` | (740.0, -1407.6, 157.0)..(742.0, -1402.4, 163.0) | (596.0, 752.4, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Fastener_01_Right_1` | (740.0, -1407.6, 337.0)..(742.0, -1402.4, 343.0) | (596.0, 752.4, 89.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Fastener_02_Left_0` | (-742.0, -1552.6, 157.0)..(-740.0, -1547.4, 163.0) | (596.0, 897.4, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Fastener_02_Left_1` | (-742.0, -1552.6, 337.0)..(-740.0, -1547.4, 343.0) | (596.0, 897.4, 89.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Fastener_02_Right_0` | (740.0, -1552.6, 157.0)..(742.0, -1547.4, 163.0) | (596.0, 897.4, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Fastener_02_Right_1` | (740.0, -1552.6, 337.0)..(742.0, -1547.4, 343.0) | (596.0, 897.4, 89.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Frame_00` | (-740.0, -1263.0, 0.0)..(740.0, -1247.0, 840.0) | (0.0, 597.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Frame_01` | (-740.0, -1413.0, 0.0)..(740.0, -1397.0, 840.0) | (0.0, 747.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Frame_02` | (-740.0, -1558.0, 0.0)..(740.0, -1542.0, 840.0) | (0.0, 892.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Liner_00` | (-601.0, -1393.0, 0.0)..(601.0, -1267.0, 701.0) | (0.0, 617.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Liner_01` | (-601.0, -1538.0, 0.0)..(601.0, -1417.0, 701.0) | (0.0, 767.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Panel_00_Right` | (340.0, -1393.0, 0.0)..(740.0, -1267.0, 840.0) | (196.0, 617.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Panel_01_Left` | (-740.0, -1538.0, 0.0)..(-340.0, -1417.0, 840.0) | (196.0, 767.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Panel_01_Roof` | (-340.0, -1538.0, 834.0)..(340.0, -1417.0, 840.0) | (0.0, 767.0, 586.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Seat_00_Left` | (-745.0, -1275.0, 0.0)..(-595.0, -1235.0, 4.0) | (451.0, 585.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Seat_00_Right` | (595.0, -1275.0, 0.0)..(745.0, -1235.0, 4.0) | (451.0, 585.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Seat_01_Left` | (-745.0, -1425.0, 0.0)..(-595.0, -1385.0, 4.0) | (451.0, 735.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Seat_01_Right` | (595.0, -1425.0, 0.0)..(745.0, -1385.0, 4.0) | (451.0, 735.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Seat_02_Left` | (-745.0, -1570.0, 0.0)..(-595.0, -1530.0, 4.0) | (451.0, 880.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Collector/Seat_02_Right` | (595.0, -1570.0, 0.0)..(745.0, -1530.0, 4.0) | (451.0, 880.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Brace_00_Left` | (-444.0, 815.8, 92.4)..(-366.1, 1039.2, 350.1) | (222.1, 385.8, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Brace_02_Right` | (604.1, 1270.6, 166.1)..(707.4, 1544.4, 583.0) | (460.1, 840.6, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Fastener_00_Left_0` | (-400.7, 822.4, 125.3)..(-398.7, 827.6, 131.3) | (254.7, 392.4, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Fastener_00_Left_1` | (-400.7, 822.4, 269.6)..(-398.7, 827.6, 275.6) | (254.7, 392.4, 21.6) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Fastener_00_Right_0` | (398.7, 822.4, 125.3)..(400.7, 827.6, 131.3) | (254.7, 392.4, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Fastener_00_Right_1` | (398.7, 822.4, 269.6)..(400.7, 827.6, 275.6) | (254.7, 392.4, 21.6) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Fastener_01_Left_0` | (-461.3, 1027.4, 149.2)..(-459.3, 1032.6, 155.2) | (315.3, 597.4, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Fastener_01_Left_1` | (-461.3, 1027.4, 320.3)..(-459.3, 1032.6, 326.3) | (315.3, 597.4, 72.3) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Fastener_01_Right_0` | (459.3, 1027.4, 149.2)..(461.3, 1032.6, 155.2) | (315.3, 597.4, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Fastener_01_Right_1` | (459.3, 1027.4, 320.3)..(461.3, 1032.6, 326.3) | (315.3, 597.4, 72.3) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Fastener_02_Left_0` | (-638.9, 1277.4, 219.1)..(-636.9, 1282.6, 225.1) | (492.9, 847.4, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Fastener_02_Left_1` | (-638.9, 1277.4, 468.9)..(-636.9, 1282.6, 474.9) | (492.9, 847.4, 220.9) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Fastener_02_Right_0` | (636.9, 1277.4, 219.1)..(638.9, 1282.6, 225.1) | (492.9, 847.4, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Fastener_02_Right_1` | (636.9, 1277.4, 468.9)..(638.9, 1282.6, 474.9) | (492.9, 847.4, 220.9) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Fastener_03_Left_0` | (-724.6, 1532.4, 252.9)..(-722.6, 1537.6, 258.9) | (578.6, 1102.4, 4.9) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Fastener_03_Left_1` | (-724.6, 1532.4, 540.7)..(-722.6, 1537.6, 546.7) | (578.6, 1102.4, 292.7) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Fastener_03_Right_0` | (722.6, 1532.4, 252.9)..(724.6, 1537.6, 258.9) | (578.6, 1102.4, 4.9) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Fastener_03_Right_1` | (722.6, 1532.4, 540.7)..(724.6, 1537.6, 546.7) | (578.6, 1102.4, 292.7) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Frame_00` | (-399.1, 817.0, 0.0)..(399.1, 833.0, 474.4) | (0.0, 387.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Frame_01` | (-464.0, 1022.0, 0.0)..(464.0, 1038.0, 554.3) | (0.0, 592.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Frame_02` | (-642.1, 1272.0, 0.0)..(642.1, 1288.0, 773.4) | (0.0, 842.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Frame_03` | (-722.8, 1527.0, 0.0)..(722.8, 1543.0, 872.8) | (0.0, 1097.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Liner_00` | (-405.6, 837.0, 0.0)..(405.6, 1018.0, 493.2) | (0.0, 407.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Liner_01` | (-581.8, 1042.0, 0.0)..(581.8, 1268.0, 710.1) | (0.0, 612.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Liner_02` | (-675.2, 1292.0, 0.0)..(675.2, 1523.0, 825.0) | (0.0, 862.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Panel_00_Right` | (285.8, 837.0, 0.0)..(452.6, 1018.0, 540.2) | (141.8, 407.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Panel_01_Left` | (-628.8, 1042.0, 0.0)..(-328.2, 1268.0, 757.1) | (184.2, 612.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Panel_01_Right` | (328.2, 1042.0, 0.0)..(628.8, 1268.0, 757.1) | (184.2, 612.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Panel_01_Roof` | (-430.6, 1042.0, 551.2)..(430.6, 1268.0, 757.1) | (0.0, 612.0, 303.2) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Panel_02_Left` | (-722.2, 1292.0, 0.0)..(-440.6, 1523.0, 872.0) | (296.6, 862.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Panel_02_Roof` | (-489.5, 1292.0, 770.6)..(489.5, 1523.0, 872.0) | (0.0, 862.0, 522.6) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Seat_00_Left` | (-403.7, 805.0, 0.0)..(-345.7, 845.0, 4.0) | (201.7, 375.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Seat_00_Right` | (345.7, 805.0, 0.0)..(403.7, 845.0, 4.0) | (201.7, 375.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Seat_01_Left` | (-464.3, 1010.0, 0.0)..(-406.3, 1050.0, 4.0) | (262.3, 580.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Seat_01_Right` | (406.3, 1010.0, 0.0)..(464.3, 1050.0, 4.0) | (262.3, 580.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Seat_02_Left` | (-641.9, 1260.0, 0.0)..(-583.9, 1300.0, 4.0) | (439.9, 830.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Seat_02_Right` | (583.9, 1260.0, 0.0)..(641.9, 1300.0, 4.0) | (439.9, 830.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Seat_03_Left` | (-727.6, 1515.0, 0.0)..(-669.6, 1555.0, 4.0) | (525.6, 1085.0, 0.0) | clear |
+| `Geometry/Tunnel/Housings/Nozzle/Seat_03_Right` | (669.6, 1515.0, 0.0)..(727.6, 1555.0, 4.0) | (525.6, 1085.0, 0.0) | clear |
 | `Geometry/Tunnel/Nozzle` | (-675.0, 762.5, 0.0)..(675.0, 1575.0, 825.0) | (0.0, 332.5, 0.0) | clear |
 | `Geometry/Tunnel/NozzleBolts` | (-377.0, 774.0, 18.9)..(377.0, 776.0, 452.0) | (0.0, 344.0, 0.0) | clear |
 | `Geometry/Tunnel/NozzleFlange` | (-684.7, 776.0, 0.0)..(684.7, 1506.0, 834.2) | (0.0, 346.0, 0.0) | clear |
@@ -216,7 +284,7 @@ Nozzle surface clearance: the exact minimum distance from any camera sample (236
 
 ## 6. Blueprint source that addresses the old environment
 
-Scanned 117 files (`.js, .json, .kit, .py, .toml, .ts, .usda`) under `external/blueprint`, skipping `.git`, the old environment's own directory and LFS pointers. Old environment asset names searched for (from the files under `external/blueprint/source/specializations/auto-aero/stages/layers/WindTunnel`): `ComputerMouseB`, `Contemporary_Hutch`, `Contemporary_LaterialFile`, `Contemporary_LockedStorage`, `Contemporary_OpenStorage`, `FireAlarm_A01_01`, `KeyboardB`, `MonitorD`, `Steelbook`, `Turntable`, `WireComputerCart_A01_01`, `spotLight_geom`, `spotLight_prop`, `windTunnelEnv`, `windTunnelEnv_geom`.
+Scanned 117 files (`.js, .json, .kit, .py, .toml, .ts, .usda`) under `external/blueprint`, skipping `.git`, the old environment's own directory and LFS pointers. Old environment asset names searched for (from the files under `external/blueprint/source/specializations/auto-aero/stages/layers/WindTunnel`): `ComputerMouseB`, `Contemporary_Hutch`, `Contemporary_LaterialFile`, `Contemporary_LockedStorage`, `Contemporary_OpenStorage`, `EdgeLitAcrylicHardwiredExitSign_A01_01`, `FireAlarm_A01_01`, `KeyboardB`, `MonitorD`, `Steelbook`, `Turntable`, `WireComputerCart_A01_01`, `spotLight_geom`, `spotLight_prop`, `windTunnelEnv`, `windTunnelEnv_geom`.
 
 Scope of this scan, so a reader knows what it cannot see:
 

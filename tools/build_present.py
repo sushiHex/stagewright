@@ -12,7 +12,11 @@ import sys
 from pathlib import Path
 
 if __name__ == "__main__":
-    argparse.ArgumentParser(description="Build both presentation scenes and check their cameras.").parse_args()
+    parser = argparse.ArgumentParser(description="Build both presentation scenes and check their cameras.")
+    parser.add_argument("--out", type=Path, help="model directory containing assets and scenes")
+    parser.add_argument("--asset", type=Path, help="environment asset (default: assets/test_section.usda under --out)")
+    parser.add_argument("--lod", choices=("coarse", "final"), default="final", help="sectional housing detail")
+    args = parser.parse_args()
 
 import numpy as np
 
@@ -484,13 +488,8 @@ def check_stilts(path, margin=2.0):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Build wind tunnel presentation scenes")
-    parser.add_argument("--out", type=Path, default=MODEL, help="model directory containing assets and scenes")
-    parser.add_argument("--asset", type=Path, help="environment asset (default: assets/test_section.usda under --out)")
-    parser.add_argument("--lod", choices=("coarse", "final"), default="final", help="sectional housing detail")
-    args = parser.parse_args()
     for mode in SCENES:
-        path = build(mode, args.asset, args.out, args.lod)
+        path = build(mode, args.asset, MODEL if args.out is None else args.out, args.lod)
         if mode == "reference":
             check_dolly(path)
             check_dolly(path, "Orbit360", ORBIT)
