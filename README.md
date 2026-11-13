@@ -77,7 +77,7 @@ External Blueprint content and dependencies are not bundled.
 <details>
 <summary>Wind tunnel: seamless 360 tour and additional views</summary>
 
-https://github.com/user-attachments/assets/bacc0ef1-b90b-4d65-8be2-4a333056c435
+https://github.com/user-attachments/assets/0b15bd6a-337f-420c-85f7-7ece8ffa1266
 
 | | |
 |---|---|
