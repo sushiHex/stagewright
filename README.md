@@ -31,6 +31,9 @@ the desktop responsive. Follow [the factory study](https://github.com/sushiHex/s
 
 ![Eight saved construction stages followed by recorded roof and wall motion](docs/assets/courtyard-story.gif)
 
+[**Open the demo gallery**](https://sushihex.github.io/stagewright/demos/): original-quality
+movies with synchronized indicators, from the first linkage to COURTYARD and the inspection hall.
+
 Construction studies retain the prompt, declared inputs and model settings with their
 results. Saved USD revisions show scene changes; recorded solver poses show motion.
 The [live USD observer](docs/live-viewer.md) displays published revisions through RTX and WebRTC (Web Real-Time Communication).
