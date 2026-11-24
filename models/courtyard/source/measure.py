@@ -48,7 +48,8 @@ def geometry_bounds(stage, body_paths):
         if UsdGeom.Imageable(prim).ComputeVisibility() == "invisible":
             continue
         path = str(prim.GetPath())
-        owner = next((body for body in body_paths if path.startswith(body+"/")), "static")
+        owner = next((str(prefix) for prefix in reversed(prim.GetPath().GetPrefixes())
+                      if str(prefix) in inverses), "static")
         extent = bounds.ComputeUntransformedBound(prim).ComputeAlignedRange()
         if extent.IsEmpty():
             continue
@@ -136,12 +137,22 @@ def measure(directory, output):
     if sha256(frozen)!=record["source_sha256"]:
         raise ValueError("Frozen geometry does not match recording hash")
     stage=Usd.Stage.Open(str(frozen))
+    if UsdGeom.GetStageMetersPerUnit(stage) != 1.0:
+        raise ValueError("The courtyard must use metres")
     with np.load(directory/"recording/poses.npz",allow_pickle=False) as data:
         paths=list(map(str,data["paths"]))
         poses=data["poses"].copy()
         seconds=data["seconds"].copy()
-    if not np.isfinite(poses).all():
-        raise ValueError("Non-finite recording")
+    if (seconds.ndim != 1 or not len(seconds) or len(seconds) != record["samples"]
+            or not paths or len(set(paths)) != len(paths) or poses.shape != (len(seconds), len(paths), 7)):
+        raise ValueError("Incomplete recording")
+    fps = record["fps"]
+    if fps <= 0 or not np.allclose(seconds * fps, np.arange(1, len(seconds) + 1), rtol=0, atol=1e-6):
+        raise ValueError("Recording timestamps do not match its tick rate")
+    if record["quaternion_order"] != "xyzw" or not np.isfinite(poses).all():
+        raise ValueError("Invalid recorded poses")
+    if np.any(np.linalg.norm(poses[..., 3:], axis=-1) == 0):
+        raise ValueError("Invalid recorded poses")
     if seconds[-1]-seconds[0] < CONDITION["final_hold_seconds"]:
         raise ValueError("Recording is shorter than the final hold window")
     groups,labels=geometry_bounds(stage,paths)

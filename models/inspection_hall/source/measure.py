@@ -62,6 +62,7 @@ def geometry(stage, paths):
     cache = UsdGeom.XformCache()
     data, names, members = [], [], []
     inverse = {p: cache.GetLocalToWorldTransform(stage.GetPrimAtPath(p)).GetInverse() for p in paths}
+    body_indices = {path: index for index, path in enumerate(paths)}
     for prim in Usd.PrimRange.Stage(stage, Usd.TraverseInstanceProxies()):
         if not prim.IsA(UsdGeom.Boundable):
             continue
@@ -74,7 +75,8 @@ def geometry(stage, paths):
         if extent is None or len(extent) != 2:
             raise RuntimeError(f"No geometric extent: {prim.GetPath()}")
         name = str(prim.GetPath())
-        member = next((i for i, p in enumerate(paths) if name.startswith(p+"/")), -1)
+        member = next((body_indices[str(path)] for path in reversed(prim.GetPath().GetPrefixes())
+                       if str(path) in body_indices), -1)
         m = cache.GetLocalToWorldTransform(prim)
         if member >= 0:
             m = m * inverse[paths[member]]
@@ -119,30 +121,51 @@ def compare_candidates(powered, control):
             result[str(p.GetPath())+"@schemas"] = repr(p.GetAppliedSchemas())
             for prop in p.GetProperties():
                 key = str(prop.GetPath())
-                result[key] = repr(prop.Get()) if isinstance(prop, Usd.Attribute) else repr(prop.GetTargets())
+                if isinstance(prop, Usd.Attribute):
+                    result[key] = repr(prop.Get())
+                    times = prop.GetTimeSamples()
+                    if times:
+                        result[key] += repr([(time, prop.Get(time)) for time in times])
+                else:
+                    result[key] = repr(prop.GetTargets())
         return result
     va, vb = values(a), values(b)
     differences = {p: {"powered": va.get(p), "control": vb.get(p)}
                    for p in va.keys() | vb.keys() if va.get(p) != vb.get(p)}
     expected = {"/World/Joints/M01_Roof.drive:angular:physics:"+s for s in ("stiffness", "damping", "maxForce")}
-    return {"only_three_disabled_drive_settings": set(differences) == expected, "differences": differences}
+    def is_disabled(path):
+        attr = b.GetAttributeAtPath(path)
+        return attr and attr.Get() == 0 and all(attr.Get(t) == 0 for t in attr.GetTimeSamples())
+
+    disabled = set(differences) == expected and all(is_disabled(path) for path in expected)
+    return {"only_three_disabled_drive_settings": disabled, "differences": differences}
 
 
 def assess(result, out, design, control=False):
-    out.mkdir(parents=True, exist_ok=False)
     p = json.loads(design.read_text())
     c = p["useful_operation"]
     stage = Usd.Stage.Open(str(result / "input.usdz"))
-    assert UsdGeom.GetStageMetersPerUnit(stage) == 1.0
+    if UsdGeom.GetStageMetersPerUnit(stage) != 1.0:
+        raise ValueError("The inspection hall must use metres")
     record = json.loads((result / "recording/result.json").read_text())
     digest = hashlib.sha256((result / "input.usdz").read_bytes()).hexdigest()
-    assert digest == record["source_sha256"]
+    if digest != record["source_sha256"]:
+        raise ValueError("Frozen geometry does not match recording hash")
     with np.load(result / "recording/poses.npz", allow_pickle=False) as npz:
         paths = list(map(str, npz["paths"]))
         poses, seconds = npz["poses"].copy(), npz["seconds"].copy()
-    assert poses.shape == (2400, 3, 7)
-    assert record["quaternion_order"] == "xyzw"
-    assert np.isfinite(poses).all()
+    # The evaluation covers the complete 20-second operation at the recorded tick rate.
+    fps = record["fps"]
+    if fps <= 0 or record["samples"] != 20 * fps or seconds.shape != (record["samples"],):
+        raise ValueError("Expected the full 20-second hall recording")
+    if not np.allclose(seconds, np.arange(1, len(seconds) + 1) / fps, rtol=0, atol=1e-8):
+        raise ValueError("Recording timestamps do not match its tick rate")
+    if poses.shape != (len(seconds), 3, 7) or len(paths) != 3 or len(set(paths)) != 3:
+        raise ValueError("Expected one pose per hall body at each tick")
+    if record["quaternion_order"] != "xyzw" or not np.isfinite(poses).all():
+        raise ValueError("Invalid recorded poses")
+    if np.any(np.linalg.norm(poses[..., 3:], axis=-1) == 0):
+        raise ValueError("Invalid recorded poses")
     rots = rotations(poses[..., 3:])
     positions = poses[..., :3]
     di, ri = paths.index(DECK), paths.index(ROOF)
@@ -270,13 +293,14 @@ def assess(result, out, design, control=False):
         "wide_camera_contains_mechanism_all_samples": all(r["mechanism_inside_wide_frustum"] for r in rows),
         "limits": "Bounding-box geometry assessment and unloaded recorded rigid poses only. No forces, structural analysis, contact report, occupied test or rendering."
     }
+    out.mkdir(parents=True, exist_ok=False)
     (out / "assessment.json").write_text(json.dumps(report, indent=2)+"\n")
     with (out / "per_sample.csv").open("w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
     # Actual recorded poses presented as inspectable static USD stages, explicitly labelled.
-    for index, slug in ((0, "first_recorded"), (1199, "ten_seconds"), (2399, "last_recorded")):
+    for index, slug in ((0, "first_recorded"), (int(np.argmin(abs(seconds - 10))), "ten_seconds"), (-1, "last_recorded")):
         snap = Usd.Stage.CreateNew(str(out / (slug+".usda")))
         import os
         snap.GetRootLayer().subLayerPaths = [os.path.relpath(result / "input.usdz", out).replace("\\", "/")]

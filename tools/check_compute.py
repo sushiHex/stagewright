@@ -154,14 +154,15 @@ def check_codecs():
         np.testing.assert_allclose(read_rgb(OUT / f"color_{i}.jpg").mean((0, 1)), color, atol=3)
         paths.append(path)
     output = encode_mp4(paths * 12, OUT / "colors.mp4", 24)
-    decoder = nvc.CreateSimpleDecoder(str(output), outputColorType=nvc.OutputColorType.RGB)
+    # Readback below uses a CPU pointer. Request host frames explicitly.
+    decoder = nvc.CreateSimpleDecoder(str(output), 0, 0, 0, False, outputColorType=nvc.OutputColorType.RGB)
     metadata = decoder.get_stream_metadata()
     assert metadata.num_frames == 24 and metadata.average_fps == 24
     frames = decoder.get_batch_frames_by_index([0, 1, 22, 23])
     assert len(frames) == 4
     for frame, expected in zip(frames, (colors[0], colors[1], colors[0], colors[1])):
         memory = (ctypes.c_uint8 * frame.framesize()).from_address(frame.GetPtrToPlane(0))
-        pixels = np.ctypeslib.as_array(memory).reshape(frame.shape)
+        pixels = np.ndarray(frame.shape, dtype=np.uint8, buffer=memory, strides=frame.strides)
         np.testing.assert_allclose(pixels.mean((0, 1)), expected, atol=3)
     try:
         encode_mp4([paths[0], OUT / "missing.png"], OUT / "colors.mp4", 24)

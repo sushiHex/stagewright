@@ -101,7 +101,7 @@ def build(cache: Path, mesh: Path, destination: Path):
     hashes = {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in (cache, mesh)}
     case = json.loads(cache.with_suffix(".json").read_text(encoding="utf-8"))
     velocity = float(case["app_state"]["omni:rtwt:app_state:velocity"])
-    if velocity <= 0:
+    if not np.isfinite(velocity) or velocity <= 0:
         raise ValueError("The cached reference must state a positive free-stream speed")
     points, indices = _ply(mesh)
     wp.config.quiet = True

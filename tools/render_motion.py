@@ -103,7 +103,7 @@ def warmup_frames(start, count, loop):
 
 def render(frames, res, spp, out_dir, max_steps, scene=SCENE, product=PRODUCT,
            fps=None, count=None, supersample=2, loop=None, cpu_readback=False,
-           sample_batch=stills.DEFAULT_SAMPLE_BATCH, snapshot_poses=False):
+           sample_batch=stills.DEFAULT_SAMPLE_BATCH, snapshot_poses=False, *, encode_options=None):
     frames = list(frames)
     fps, count = motion_timing(product, fps, count)
     loop = loop_enabled(product, loop)
@@ -117,6 +117,8 @@ def render(frames, res, spp, out_dir, max_steps, scene=SCENE, product=PRODUCT,
                 loop, cpu_readback, sample_batch, snapshot_poses)
         if canonical:
             complete.write_text(str(count), encoding="ascii")
+        if encode_options is not None:
+            _encode(out_dir, *encode_options, fps, count, product, scene, loop)
 
 
 def _render(frames, res, spp, out_dir, max_steps, scene, product, fps, count, supersample,
@@ -224,8 +226,11 @@ def _encode(frames_dir, gif_width, gif_fps, make_gif, fps, count, product, scene
     # small enough to embed in a README.
     graph = (f"trim=end_frame={count},fps={gif_fps},scale={gif_width}:-1:flags=lanczos,split[a][b];"
              "[a]palettegen=max_colors=64:stats_mode=full[p];[b][p]paletteuse=dither=none:diff_mode=rectangle")
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(fps), "-i", src,
-                    "-filter_complex", graph, "-loop", "0", str(gif)], check=True)
+    with tempfile.TemporaryDirectory(dir=video_dir) as staging:
+        temporary = Path(staging) / gif.name
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(fps), "-i", src,
+                        "-filter_complex", graph, "-loop", "0", str(temporary)], check=True)
+        temporary.replace(gif)
     print(gif)
 
 
@@ -322,8 +327,8 @@ def main():
     if not a.no_render:
         render(a.frames, a.res, a.spp, a.out.resolve(), a.max_steps or 4 * max(a.spp, 64) + 64,
                a.scene.resolve(), a.product, a.fps, a.count, a.supersample, a.loop, a.cpu_readback, a.sample_batch,
-               a.snapshot_poses)
-    if a.encode:
+               a.snapshot_poses, encode_options=(a.gif_width, a.gif_fps, a.gif) if a.encode else None)
+    elif a.encode:
         encode(a.out.resolve(), a.gif_width, a.gif_fps, a.gif, a.fps, a.count, a.product, a.scene.resolve(), a.loop)
 
 

@@ -240,7 +240,8 @@ def check_anchors(stage):
             targets = getattr(joint, f"GetBody{side}Rel")().GetTargets()
             local = Gf.Vec3d(getattr(joint, f"GetLocalPos{side}Attr")().Get())
             anchors.append(cache.GetLocalToWorldTransform(stage.GetPrimAtPath(targets[0])).Transform(local) if targets else local)
-        assert (anchors[1]-anchors[0]).GetLength() < 1e-5, str(prim.GetPath())
+        if not (anchors[1]-anchors[0]).GetLength() < 1e-5:
+            raise ValueError(f"Disjoint initial hinge anchors: {prim.GetPath()}")
 
 
 def main():

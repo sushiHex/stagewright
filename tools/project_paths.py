@@ -4,6 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 MODEL = ROOT / "models" / "wind_tunnel"
 SCENES = MODEL / "scenes"
+PUBLIC_STILLS = ("hero", "detail", "main", "wake", "qc_main")
 
 # Output cadence belongs to each authored motion, shared by builder and renderer.
 MOTION_SETTINGS = {

@@ -43,13 +43,15 @@ def loaded_scene(rtx, label, usd_file):
     import ovstage
 
     scene = ovstage.Stage(label)
-    rtx.attach_ovstage(scene)
     try:
-        ovstage.population.open_usd(scene, str(usd_file), ordinal=1, time=0.0)
-        publish(scene, 1)
-        yield scene
+        rtx.attach_ovstage(scene)
+        try:
+            ovstage.population.open_usd(scene, str(usd_file), ordinal=1, time=0.0)
+            publish(scene, 1)
+            yield scene
+        finally:
+            rtx.detach_ovstage()
     finally:
-        rtx.detach_ovstage()
         scene.destroy()
 
 

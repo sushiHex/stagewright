@@ -13,10 +13,16 @@ from physics_usd import pack, export
 
 def measure(recording, scale):
     with np.load(recording / "poses.npz", allow_pickle=False) as poses:
-        positions = poses["poses"][..., :3]
+        samples = poses["poses"]
+        if samples.ndim != 3 or samples.shape[-1] != 7 or not samples.size or not np.isfinite(samples).all():
+            raise ValueError("Expected finite, nonempty position and quaternion samples")
+        positions = samples[..., :3]
         travel = np.linalg.norm(positions-positions[0], axis=2).max(axis=0) * scale
-        quaternions = poses["poses"][..., 3:]
-        quaternions = quaternions / np.linalg.norm(quaternions, axis=2, keepdims=True)
+        quaternions = samples[..., 3:].astype(np.float64)
+        lengths = np.linalg.norm(quaternions, axis=2, keepdims=True)
+        if (lengths == 0).any():
+            raise ValueError("Recorded body has a zero-length quaternion")
+        quaternions /= lengths
         cosine = np.clip(np.abs((quaternions*quaternions[0]).sum(axis=2)), 0, 1)
         angles = np.degrees(2*np.arccos(cosine)).max(axis=0)
         return [{"path": str(path), "max_translation_m": float(distance),

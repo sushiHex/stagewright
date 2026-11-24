@@ -1,6 +1,7 @@
 """Publish a complete immutable USD package, then advance the current revision."""
 import argparse
 import json
+import os
 import tempfile
 from pathlib import Path
 
@@ -11,8 +12,26 @@ def publish(source, directory):
     directory = directory.resolve()
     revisions = directory / "revisions"
     revisions.mkdir(parents=True, exist_ok=True)
+    # Serialize numbering and pointer replacement as one operation.
+    lock = revisions / ".publisher.lock"
+    with lock.open("a+b") as stream:
+        # Keep a stable lock file. The OS releases its lock if the worker exits.
+        stream.seek(0)
+        try:
+            if os.name == "nt":
+                import msvcrt
+                msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except (BlockingIOError, PermissionError) as error:
+            raise RuntimeError(f"Another publisher is active in {directory}") from error
+        return _publish(source, directory, revisions)
+
+
+def _publish(source, directory, revisions):
     revision = 1 + max((int(path.stem) for path in revisions.glob("*.usdz")
-                        if path.stem.isdigit()), default=0)
+                        if path.stem.isascii() and path.stem.isdecimal()), default=0)
     relative = Path("revisions") / f"{revision:04d}.usdz"
     pack(source, directory / relative)
     record = {"revision": revision, "scene": relative.as_posix()}

@@ -84,9 +84,11 @@ def simulate(scene_file, output, steps, fps):
     finally:
         try:
             if physics is not None:
-                if attached:
-                    physics.wait_task(physics.detach_ovstage())
-                physics.destroy()
+                try:
+                    if attached:
+                        physics.wait_task(physics.detach_ovstage())
+                finally:
+                    physics.destroy()
         finally:
             stage.destroy()
     if hashlib.sha256(scene_file.read_bytes()).hexdigest() != source_hash:

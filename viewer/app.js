@@ -24,7 +24,7 @@ function showError(error) {
 function controls() {
   const hasRevision = state.selected_revision !== null && state.selected_revision !== undefined;
   revisionSelect.disabled = !connected || !state.revisions.length;
-  latestButton.disabled = !connected || state.latest_revision == null || String(state.selected_revision) === String(state.latest_revision);
+  latestButton.disabled = !connected || state.latest_revision == null;
   playButton.disabled = seek.disabled = !connected || !hasRevision || !(state.end > state.start);
   connectButton.disabled = connecting || !streamer;
 }
@@ -164,7 +164,7 @@ seek.addEventListener('input', () => {
   playhead(seconds);
   send('seek', { seconds });
 });
-for (const event of ['change', 'pointercancel', 'keyup', 'blur']) {
+for (const event of ['change', 'pointerup', 'pointercancel', 'lostpointercapture', 'keyup', 'blur']) {
   seek.addEventListener(event, () => { scrubbing = false; });
 }
 window.addEventListener('pagehide', () => { if (streamer) streamer.terminate().catch(() => {}); });
