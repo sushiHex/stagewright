@@ -98,14 +98,15 @@ def render():
         for i in range(COUNT):
             ordinal = i + 2  # ordinal 1 is the initial load
             rt.seek(scene, ordinal, i / 24)
-            with gpu.batch():
-                result = rtx.step(render_products={product}, ordinal=ordinal, delta_time=1 / 60)
-                px = rt.pixels(rt.frame_of(result, product, index=0), f"{product}/Color")
-                del result
+            images, status = rt.converge(rtx, [product], ordinal, delta_time=1 / 24, max_steps=320)
+            if product not in images:
+                raise RuntimeError(f"Smoke frame {i} was unavailable (last status {status.get(product)})")
+            px = images[product]
             rgb = px[..., :3].astype(float)
             half = rgb.shape[1] // 2
             print(f"frame {i}: shape={px.shape} left={rgb[:, :half].mean():.1f} right={rgb[:, half:].mean():.1f}")
-            write_rgb(FRAMES / f"{i:04d}.png", px)
+            with gpu.batch():
+                write_rgb(FRAMES / f"{i:04d}.png", px)
 
 
 if __name__ == "__main__":

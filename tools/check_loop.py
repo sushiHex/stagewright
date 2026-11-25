@@ -5,9 +5,8 @@ import json
 from pathlib import Path
 
 import numpy as np
-import PyNvVideoCodec as nvc
 
-from image_io import read_rgb
+from gpu_work import GpuPacer
 from project_paths import ROOT, SCENES, MOTION_SETTINGS
 
 PRODUCT = "Orbit360"
@@ -51,6 +50,18 @@ def seam_step(images, count):
 
 
 def check():
+    from render_motion import frame_access
+
+    # Keep the checked frames and movie fixed until their receipt is published.
+    with frame_access(FRAMES):
+        _check()
+
+
+def _check():
+    gpu = GpuPacer()
+    import PyNvVideoCodec as nvc
+    from image_io import read_rgb
+
     RECORD.unlink(missing_ok=True)
     settings = MOTION_SETTINGS[PRODUCT]
     count, fps = settings["frames"], settings["fps"]
@@ -58,11 +69,16 @@ def check():
     paths = [FRAMES / f"{i:04d}.png" for i in range(count)]
     require(all(path.is_file() for path in paths), "The numeric loop frame sequence is incomplete")
     indices = sorted({0, 1, 2, count // 4, count // 2, 3 * count // 4, count - 2, count - 1})
-    source = {i: read_rgb(paths[i]) for i in indices}
+    source = {}
+    for i in indices:
+        with gpu.batch():
+            source[i] = read_rgb(paths[i])
     height, width = source[0].shape[:2]
     require(width * 9 == height * 16, "Loop output must match the camera's 16:9 aspect ratio")
     for i in (0, 1):
-        repeated_pose(source[i], read_rgb(FRAMES / f"_loop_{i:04d}.png"))
+        with gpu.batch():
+            repeat = read_rgb(FRAMES / f"_loop_{i:04d}.png")
+        repeated_pose(source[i], repeat)
     seam_step(source, count)
     require(all(not np.array_equal(source[0], source[i]) for i in (count // 4, count // 2, 3 * count // 4)),
             "Quarter-cycle views do not show actual camera motion")
@@ -79,10 +95,12 @@ def check():
         require(pts * time_num * fps == i * time_den, "Loop timestamps skip or repeat")
         require(duration * time_num * fps == time_den, "Loop packet duration is not uniform")
 
-    decoder = nvc.CreateSimpleDecoder(str(VIDEO), outputColorType=nvc.OutputColorType.RGB)
+    # Readback below uses a CPU pointer. Request host frames explicitly.
+    decoder = nvc.CreateSimpleDecoder(encSource=str(VIDEO), useDeviceMemory=False, outputColorType=nvc.OutputColorType.RGB)
     metadata = decoder.get_stream_metadata()
     require(metadata.num_frames == count and metadata.average_fps == fps, "Decoded frame count or rate differs")
-    frames = decoder.get_batch_frames_by_index(indices)
+    with gpu.batch():
+        frames = decoder.get_batch_frames_by_index(indices)
     require(len(frames) == len(indices), "Could not decode all seam and quarter-cycle views")
     decoded = {}
     for i, frame in zip(indices, frames):

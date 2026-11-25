@@ -41,7 +41,9 @@ def motion_timing(product, fps, count):
     return settings["fps"] if fps is None else fps, settings["frames"] if count is None else count
 
 
-def loop_enabled(product, loop):
+def loop_enabled(product, loop, scene=SCENE):
+    if loop is not None and scene.resolve() != SCENE.resolve():
+        return bool(loop)
     settings = MOTION_SETTINGS.get(product)
     if settings is not None:
         if loop and not settings["loop"]:
@@ -67,6 +69,8 @@ def check_frame_directory(scene, product, fps, count, loop, directory):
 def check_render_directory(scene, product, fps, count, loop, directory, frames, res, spp, supersample):
     check_frame_directory(scene, product, fps, count, loop, directory)
     if directory.resolve() == frame_directory(product).resolve() and product in MOTION_SETTINGS:
+        if res[0] * 9 != res[1] * 16:
+            raise ValueError("Use a separate --out directory for a different camera aspect ratio")
         if (frames != list(range(count)) or spp < DEFAULT_SPP or supersample < DEFAULT_SUPERSAMPLE
                 or any(size < minimum for size, minimum in zip(res, DEFAULT_RESOLUTION, strict=True))):
             raise ValueError("Partial and lower-quality previews require a separate --out directory")
@@ -103,10 +107,10 @@ def warmup_frames(start, count, loop):
 
 def render(frames, res, spp, out_dir, max_steps, scene=SCENE, product=PRODUCT,
            fps=None, count=None, supersample=2, loop=None, cpu_readback=False,
-           sample_batch=stills.DEFAULT_SAMPLE_BATCH, snapshot_poses=False):
+           sample_batch=stills.DEFAULT_SAMPLE_BATCH, snapshot_poses=False, *, encode_options=None):
     frames = list(frames)
     fps, count = motion_timing(product, fps, count)
-    loop = loop_enabled(product, loop)
+    loop = loop_enabled(product, loop, scene)
     check_render_directory(scene, product, fps, count, loop, out_dir, frames, res, spp, supersample)
     canonical = out_dir.resolve() == frame_directory(product).resolve() and product in MOTION_SETTINGS
     with frame_access(out_dir):
@@ -117,6 +121,8 @@ def render(frames, res, spp, out_dir, max_steps, scene=SCENE, product=PRODUCT,
                 loop, cpu_readback, sample_batch, snapshot_poses)
         if canonical:
             complete.write_text(str(count), encoding="ascii")
+        if encode_options is not None:
+            _encode(out_dir, *encode_options, fps, count, product, scene, loop)
 
 
 def _render(frames, res, spp, out_dir, max_steps, scene, product, fps, count, supersample,
@@ -187,7 +193,7 @@ def encode(frames_dir, gif_width, gif_fps, make_gif=False, fps=None, count=None,
 
 def _encode(frames_dir, gif_width, gif_fps, make_gif, fps, count, product, scene, loop):
     fps, count = motion_timing(product, fps, count)
-    loop = loop_enabled(product, loop)
+    loop = loop_enabled(product, loop, scene)
     settings = MOTION_SETTINGS.get(product)
     if scene.resolve() == SCENE.resolve() and settings is not None and settings["loop"] and (fps != settings["fps"] or count != settings["frames"]):
         raise ValueError(f"{product} encoding requires its authored fps and complete frame count")
@@ -224,8 +230,11 @@ def _encode(frames_dir, gif_width, gif_fps, make_gif, fps, count, product, scene
     # small enough to embed in a README.
     graph = (f"trim=end_frame={count},fps={gif_fps},scale={gif_width}:-1:flags=lanczos,split[a][b];"
              "[a]palettegen=max_colors=64:stats_mode=full[p];[b][p]paletteuse=dither=none:diff_mode=rectangle")
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(fps), "-i", src,
-                    "-filter_complex", graph, "-loop", "0", str(gif)], check=True)
+    with tempfile.TemporaryDirectory(dir=video_dir) as staging:
+        temporary = Path(staging) / gif.name
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(fps), "-i", src,
+                        "-filter_complex", graph, "-loop", "0", str(temporary)], check=True)
+        temporary.replace(gif)
     print(gif)
 
 
@@ -263,7 +272,7 @@ def parse_args(argv=None):
     a.fps, a.count = motion_timing(a.product, a.fps, a.count)
     a.out = frame_directory(a.product) if a.out is None else a.out
     try:
-        a.loop = loop_enabled(a.product, a.loop)
+        a.loop = loop_enabled(a.product, a.loop, a.scene)
         check_frame_directory(a.scene, a.product, a.fps, a.count, a.loop, a.out)
     except ValueError as error:
         ap.error(str(error))
@@ -322,8 +331,8 @@ def main():
     if not a.no_render:
         render(a.frames, a.res, a.spp, a.out.resolve(), a.max_steps or 4 * max(a.spp, 64) + 64,
                a.scene.resolve(), a.product, a.fps, a.count, a.supersample, a.loop, a.cpu_readback, a.sample_batch,
-               a.snapshot_poses)
-    if a.encode:
+               a.snapshot_poses, encode_options=(a.gif_width, a.gif_fps, a.gif) if a.encode else None)
+    elif a.encode:
         encode(a.out.resolve(), a.gif_width, a.gif_fps, a.gif, a.fps, a.count, a.product, a.scene.resolve(), a.loop)
 
 

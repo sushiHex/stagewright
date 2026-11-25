@@ -49,6 +49,10 @@ def _ply(path):
                     "property ushort stl", "end_header"]
         if layout != expected:
             raise ValueError("Unsupported PLY layout; expected the approved XYZ triangle mesh")
+        # Check the payload size before allocating from header counts.
+        remaining = path.stat().st_size - stream.tell()
+        if vertex_count <= 0 or face_count <= 0 or remaining != vertex_count * 12 + face_count * 15:
+            raise ValueError("PLY counts do not match the triangle data size")
         points = np.fromfile(stream, dtype="<f4", count=vertex_count * 3).reshape(-1, 3)
         faces = np.fromfile(stream, dtype=np.dtype([
             ("count", "u1"), ("indices", "<i4", (3,)), ("stl", "<u2")]), count=face_count)
@@ -98,10 +102,13 @@ def build(cache: Path, mesh: Path, destination: Path):
     from warp_simdata.data_models.vtk import image_data
     from warp_simdata.operators import slice as plane_slice, streamlines
 
+    case_path = cache.with_suffix(".json")
+    case_bytes = case_path.read_bytes()
     hashes = {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in (cache, mesh)}
-    case = json.loads(cache.with_suffix(".json").read_text(encoding="utf-8"))
+    hashes[str(case_path)] = hashlib.sha256(case_bytes).hexdigest()
+    case = json.loads(case_bytes)
     velocity = float(case["app_state"]["omni:rtwt:app_state:velocity"])
-    if velocity <= 0:
+    if not np.isfinite(velocity) or velocity <= 0:
         raise ValueError("The cached reference must state a positive free-stream speed")
     points, indices = _ply(mesh)
     wp.config.quiet = True

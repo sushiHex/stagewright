@@ -19,7 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from project_paths import ROOT, MODEL
+from project_paths import ROOT, MODEL, PUBLIC_STILLS
 
 DEFAULT_SCENE = MODEL / "scenes" / "present.usda"
 OUT_DIR = ROOT / "build" / "stills"
@@ -43,11 +43,14 @@ def write_override(scene, products, res, spp, ghost, qc, out_dir=OUT_DIR,
         rel = os.path.relpath(scene, out_dir).replace("\\", "/")
     except ValueError:  # Windows scenes can live on another drive.
         rel = scene.resolve().as_posix()
+    asset = "@" + rel + "@"
+    if "@" in rel:
+        asset = "@@@" + rel.replace("@@@", "\\@@@") + "@@@"
     vis = "inherited" if ghost else "invisible"
     qc_vis = "inherited" if qc else "invisible"
     lines = f'''#usda 1.0
 (
-    subLayers = [@{rel}@]
+    subLayers = [{asset}]
 )
 
 over "World"
@@ -119,10 +122,17 @@ def render_batch(rtx, scene, products, res, spp, ghost, max_steps, tag, qc, out_
 def render(scene, products, res, spp, max_steps, ghost_for, qc=False, prefix="", out_dir=OUT_DIR,
            sample_batch=DEFAULT_SAMPLE_BATCH):
     """Render every product; returns the products that produced no frame."""
+    if "/" in prefix or "\\" in prefix or ":" in prefix:
+        raise ValueError("Use --out for the directory and --prefix for the file name")
+    custom = scene.resolve() != DEFAULT_SCENE.resolve()
+    tag = prefix + (f"{scene.stem}_" if custom else "")
+    if custom and out_dir.resolve() == OUT_DIR.resolve():
+        protected = {f"final_{name}" for name in PUBLIC_STILLS}
+        if any(f"{tag}{product}".lower() in protected for product in products):
+            raise ValueError("Custom scene collides with a public still. Choose another --out or --prefix.")
     import rtx as rt
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    tag = prefix + ("" if scene.resolve() == DEFAULT_SCENE.resolve() else f"{scene.stem}_")
     batches = [(True, [p for p in products if p in ghost_for]), (False, [p for p in products if p not in ghost_for])]
     missing = []
     with rt.open_renderer() as rtx:
@@ -149,8 +159,21 @@ def main():
     a = ap.parse_args()
     if a.spp < 0 or a.sample_batch < 1:
         ap.error("--spp must be nonnegative and --sample-batch must be positive")
-    res = None if a.res == "scene" else tuple(int(v) for v in a.res.lower().split("x"))
+    if a.max_steps < 0:
+        ap.error("--max-steps must be nonnegative")
+    res = None
+    if a.res != "scene":
+        try:
+            res = tuple(int(v) for v in a.res.lower().split("x"))
+        except ValueError:
+            ap.error("--res must be WxH or scene")
+        if len(res) != 2 or min(res) <= 0:
+            ap.error("--res requires two positive dimensions")
     products = [p.strip() for p in a.products.split(",") if p.strip()]
+    if not products or any(not p.isidentifier() for p in products):
+        ap.error("--products requires comma-separated prim names")
+    if not a.scene.is_file():
+        ap.error(f"scene does not exist: {a.scene}")
     ghost_for = {"auto": GHOST_DEFAULT, "on": set(products), "off": set()}[a.ghost]
     missing = render(a.scene.resolve(), products, res, a.spp, a.max_steps or 4 * max(a.spp, 64) + 64, ghost_for,
                      a.qc, a.prefix, a.out.resolve(), a.sample_batch)

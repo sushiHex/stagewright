@@ -5,9 +5,13 @@ instances and transform-stack order remain composed from the original scene.
 """
 import argparse
 import math
+import sys
 from pathlib import Path
 
 from pxr import Usd
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from physics_usd import export_new_layer
 
 
 def sample(source, destination, seconds, render_layer=None):
@@ -41,8 +45,7 @@ def sample(source, destination, seconds, render_layer=None):
             else:
                 target.Set(value)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    if not result.GetRootLayer().Export(str(destination)):
-        raise RuntimeError("USD transform sample export failed")
+    export_new_layer(result.GetRootLayer(), destination)
     return destination
 
 

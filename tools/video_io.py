@@ -1,7 +1,7 @@
 """Encode packed RGB frames with NVENC and mux MP4 through PyNvVideoCodec."""
 from pathlib import Path
 from collections import deque
-from tempfile import TemporaryFile
+from tempfile import NamedTemporaryFile, TemporaryFile
 
 from gpu_work import GpuPacer
 
@@ -45,15 +45,12 @@ def _encode_mp4(paths, destination, fps, codec, *, keyframe_interval=None):
         raise ValueError("H.264 4:2:0 needs even frame dimensions")
     destination = Path(destination)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    temporary = destination.with_suffix(".partial.mp4")
     # Convert explicitly: packed RGB input to the package encoder produces full-range
     # YUV without range metadata in this pinned version. NV12 preserves intended levels.
     keyframes = {} if keyframe_interval is None else {
         "gop": keyframe_interval, "idrperiod": keyframe_interval}
     encoder = nvc.CreateEncoder(w, h, "NV12", True, codec="h264", preset="P7",
                                 fps=fps, rc="constqp", constqp=18, bf=0, **keyframes)
-    muxer = nvc.FFmpegMuxer(str(temporary), nvc.MEDIA_FORMAT.MP4, "h264", w, h,
-                            fps, 1, 1, 90000, encoder.GetSequenceParams())
     ticks = 90000 // fps
     packet_count = 0
 
@@ -69,7 +66,11 @@ def _encode_mp4(paths, destination, fps, codec, *, keyframe_interval=None):
                 raise RuntimeError("MP4 mux failed")
             packet_count += 1
 
+    with NamedTemporaryFile(dir=destination.parent, suffix=".partial.mp4", delete=False) as staging:
+        temporary = Path(staging.name)
     try:
+        muxer = nvc.FFmpegMuxer(str(temporary), nvc.MEDIA_FORMAT.MP4, "h264", w, h,
+                                fps, 1, 1, 90000, encoder.GetSequenceParams())
         unique_paths = list(dict.fromkeys(paths)) if keyframe_interval == 1 else paths
         if len(unique_paths) < len(paths):
             # Reuse independent frames without keeping decoded images in memory.

@@ -3,16 +3,17 @@ import hashlib
 import json
 from pathlib import Path
 import zipfile
+import tempfile
 
-from project_paths import ROOT, MODEL, MOTION_SETTINGS
+from project_paths import ROOT, MODEL, PUBLIC_STILLS, MOTION_SETTINGS
 
 OUT = ROOT / "build" / "share"
-MEDIA = [MODEL / "media" / f"{name}.jpg" for name in ("hero", "detail", "main", "wake", "qc_main")]
+MEDIA = [MODEL / "media" / f"{name}.jpg" for name in PUBLIC_STILLS]
 MEDIA += [MODEL / "media" / f"{name.lower()}.mp4" for name in MOTION_SETTINGS]
 MODEL_DOCS = [MODEL / "docs" / name for name in ("assets.md", "fit-check.md", "guide.md")]
 OVERRIDE = MODEL / "scenes" / "blueprint_override.usda"
 README_ASSETS = [ROOT / "docs" / "assets" / name for name in
-                 ("nvidia-pipeline.svg", "courtyard-story.gif", "courtyard-closed.png", "courtyard-open.png")]
+                 ("mecha-assembly.png", "nvidia-pipeline.svg", "courtyard-story.gif", "courtyard-closed.png", "courtyard-open.png")]
 LIVE_GUIDE = ROOT / "docs" / "live-viewer.md"
 COURTYARD = ROOT / "models" / "courtyard"
 HALL = ROOT / "models" / "inspection_hall"
@@ -82,11 +83,16 @@ def source_bytes(path):
     return relative.as_posix(), path.read_bytes()
 
 
-def archive(name, paths):
+def archive(name, paths, expected):
     entries = dict(source_bytes(path) for path in paths)
+    for path, sha256 in expected.items():
+        relative = path.relative_to(ROOT).as_posix()
+        if relative in entries and digest(entries[relative]) != sha256:
+            raise RuntimeError(f"Archived content differs from loop verification: {relative}")
     entries.update({"index.html": INDEX.encode(), "share_note.txt": NOTE.encode()})
     entries["SHA256SUMS.txt"] = ("".join(f"{digest(data)}  {path}\n" for path, data in sorted(entries.items()))).encode()
-    temporary = OUT / f"{name}.partial.zip"
+    with tempfile.NamedTemporaryFile(dir=OUT, suffix=".partial.zip", delete=False) as output:
+        temporary = Path(output.name)
     result = OUT / f"{name}.zip"
     try:
         with zipfile.ZipFile(temporary, "w", compression=zipfile.ZIP_DEFLATED) as zipped:
@@ -112,9 +118,10 @@ def main():
     # A verification record is generated only after the full canonical loop, guard
     # images and decoded video have passed tools/check_loop.py.
     record = json.loads((ROOT / "build" / "checks" / "orbit360_verified.json").read_text())
-    if record["video_sha256"] != digest((MODEL / "media" / "orbit360.mp4").read_bytes()):
-        raise RuntimeError("Public loop differs from the verified video; refresh media first")
-    if record["scene_sha256"] != digest((MODEL / "scenes" / "present.usda").read_bytes()):
+    movie = MODEL / "media" / "orbit360.mp4"
+    scene = MODEL / "scenes" / "present.usda"
+    expected = {movie: record["video_sha256"], scene: record["scene_sha256"]}
+    if digest(scene.read_bytes()) != expected[scene]:
         raise RuntimeError("Loop verification is stale for the current scene")
     if not (ROOT / "LICENSE").read_text().startswith("MIT License\n"):
         raise RuntimeError("Expected the selected MIT licence")
@@ -138,7 +145,7 @@ def main():
                *(HALL / "source" / name for name in ("design.json", "geometry.py", "measure.py")),
                MODEL / "assets" / "test_section.usda", *textures,
                MODEL / "scenes" / "present.usda", MODEL / "scenes" / "present_payload.usda"]
-    for result in (archive("stagewright-review", review), archive("stagewright-source", sources)):
+    for result in (archive("stagewright-review", review, expected), archive("stagewright-source", sources, expected)):
         print(result)
 
 

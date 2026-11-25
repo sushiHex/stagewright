@@ -14,6 +14,24 @@ import numpy as np
 from pxr import Gf, Sdf, Usd, UsdGeom, UsdUtils
 
 
+def _install_new(temporary, destination):
+    # Windows rename fails if the target exists. POSIX rename would overwrite it.
+    if os.name == "nt":
+        temporary.rename(destination)
+    else:
+        os.link(temporary, destination)
+
+
+def export_new_layer(layer, destination):
+    temporary = destination.with_name(f"_{uuid.uuid4().hex}{destination.suffix}")
+    try:
+        if not layer.Export(str(temporary)):
+            raise RuntimeError("USD layer export failed")
+        _install_new(temporary, destination)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def pack(source, destination):
     source, destination = source.resolve(strict=True), destination.resolve()
     if destination.suffix.lower() != ".usdz":
@@ -29,7 +47,7 @@ def pack(source, destination):
         # Native USD packaging retains composition and bundles dependencies.
         if not UsdUtils.CreateNewUsdzPackage(Sdf.AssetPath(str(source)), str(temporary)):
             raise RuntimeError("USD dependency packaging failed")
-        temporary.replace(destination)
+        _install_new(temporary, destination)
     finally:
         temporary.unlink(missing_ok=True)
     print(f"Frozen physics input -> {destination}")
@@ -51,14 +69,30 @@ def export(recording):
     for key in ("upAxis", "metersPerUnit", "kilogramsPerUnit", "defaultPrim"):
         if original.HasAuthoredMetadata(key):
             stage.SetMetadata(key, original.GetMetadata(key))
-    stage.SetTimeCodesPerSecond(record["fps"])
+    fps = float(record["fps"])
+    if not np.isfinite(fps) or fps <= 0 or record["quaternion_order"] != "xyzw":
+        raise ValueError("Expected a positive tick rate and xyzw quaternions")
+    stage.SetTimeCodesPerSecond(fps)
     with np.load(recording / "poses.npz", allow_pickle=False) as data:
         paths, poses, seconds = data["paths"], data["poses"], data["seconds"]
-        stage.SetStartTimeCode(float(seconds[0] * record["fps"]))
-        stage.SetEndTimeCode(float(seconds[-1] * record["fps"]))
+        if paths.ndim != 1 or not paths.size or len(set(paths)) != len(paths):
+            raise ValueError("Expected distinct recorded body paths")
+        if (seconds.ndim != 1 or not seconds.size or poses.shape != (seconds.size, paths.size, 7)
+                or record.get("samples", seconds.size) != seconds.size):
+            raise ValueError("Pose dimensions do not match the sample times and body paths")
+        times = seconds.astype(np.float64) * fps
+        if not np.isfinite(times).all() or (np.diff(times) <= 0).any():
+            raise ValueError("Expected finite, strictly increasing sample times")
+        rotations = poses[..., 3:].astype(np.float64)
+        lengths = np.linalg.norm(rotations, axis=2, keepdims=True)
+        if not np.isfinite(poses).all() or not np.isfinite(lengths).all() or (lengths == 0).any():
+            raise ValueError("Expected finite poses and nonzero quaternions")
+        rotations /= lengths
+        stage.SetStartTimeCode(float(times[0]))
+        stage.SetEndTimeCode(float(times[-1]))
         xforms = {}
         for path in paths:
-            prim = stage.GetPrimAtPath(str(path))
+            prim = original.GetPrimAtPath(str(path))
             if not prim or not prim.IsA(UsdGeom.Xformable):
                 raise RuntimeError(f"Missing transformable recorded body: {path}")
             # A world-space physics frame cannot retain authored scale/shear.
@@ -66,34 +100,30 @@ def export(recording):
             scale = Gf.Transform(matrix).GetScale()
             if not Gf.IsClose(scale, Gf.Vec3d(1), 1e-5):
                 raise ValueError(f"Replay currently requires unit-scale body frames: {path}")
-            xform = UsdGeom.Xformable(prim)
             parent = prim
             while parent and not parent.IsPseudoRoot():
                 parent_xform = UsdGeom.Xformable(parent)
                 if parent_xform and parent_xform.GetTimeSamples():
                     raise ValueError(f"Animated source body frames are unsupported: {path}")
+                if parent_xform and parent_xform.GetResetXformStack():
+                    break
                 parent = parent.GetParent()
-            op = xform.AddTransformOp(opSuffix="physicsReplay")
+            xform = UsdGeom.Xformable(stage.GetPrimAtPath(str(path)))
+            translation = xform.AddTranslateOp(opSuffix="physicsReplay")
+            orientation = xform.AddOrientOp(UsdGeom.XformOp.PrecisionDouble, "physicsReplay")
             # Reset the stack: these samples are world poses, independent of parents.
-            xform.SetXformOpOrder([op], resetXformStack=True)
-            xforms[str(path)] = op
-        for second, sample in zip(seconds, poses, strict=True):
-            time = float(second * record["fps"])
-            for path, pose in zip(paths, sample, strict=True):
-                x, y, z, w = map(float, pose[3:])
-                transform = Gf.Matrix4d().SetRotate(Gf.Quatd(w, Gf.Vec3d(x, y, z)))
-                transform.SetTranslateOnly(Gf.Vec3d(*map(float, pose[:3])))
-                xforms[str(path)].Set(transform, time)
+            xform.SetXformOpOrder([translation, orientation], resetXformStack=True)
+            xforms[str(path)] = translation, orientation
+        for time, sample, quats in zip(times, poses, rotations, strict=True):
+            for path, pose, quat in zip(paths, sample, quats, strict=True):
+                x, y, z, w = map(float, quat)
+                translation, orientation = xforms[str(path)]
+                translation.Set(Gf.Vec3d(*map(float, pose[:3])), time)
+                orientation.Set(Gf.Quatd(w, Gf.Vec3d(x, y, z)), time)
     layer = Sdf.Layer.CreateAnonymous()
     layer.TransferContent(stage.GetRootLayer())
     layer.subLayerPaths = [os.path.relpath(source, recording).replace("\\", "/")]
-    temporary = destination.with_name(f"_{uuid.uuid4().hex}.usdc")
-    try:
-        if not layer.Export(str(temporary)):
-            raise RuntimeError("USD replay export failed")
-        temporary.replace(destination)
-    finally:
-        temporary.unlink(missing_ok=True)
+    export_new_layer(layer, destination)
     print(f"Recorded USD replay -> {destination}")
     return destination
 

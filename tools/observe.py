@@ -55,8 +55,9 @@ def wrapper(source, directory, revision, width, height):
 
 def observe(publications, session, port=8765, width=960, height=540, run_file=None):
     gpu = GpuPacer()
-    import ovstage
     import ovrtx
+    ovrtx.register_schema_paths()
+    import ovstage
     import rtx as rt
     import ovstream
     from ovstream_utils.messaging import AppMessenger
@@ -143,22 +144,28 @@ def observe(publications, session, port=8765, width=960, height=540, run_file=No
                     if path.stem.isascii() and path.stem.isdigit()
                     and path.resolve().parent == revision_dir and path.is_file()}
                 state["revisions"] = [{"revision": number, "scene": f"revisions/{path.name}"}
-                                      for number, path in available.items()]
+                                      for number, path in sorted(available.items())]
+                latest = None
+                publication_error = None
                 try:
                     latest = revision(json.loads((publications / "current.json").read_text())["revision"])
                     if latest is None:
                         raise ValueError("the current revision is not published")
-                    state["latest_revision"] = latest
-                    if follow:
-                        desired = latest
                 except FileNotFoundError:
                     pass
                 except (OSError, ValueError, KeyError, TypeError) as error:
-                    state["error"] = f"Publication not available: {error}"
+                    publication_error = f"Publication not available: {error}"
+                state["latest_revision"] = latest
+                if follow:
+                    desired = latest
+                if publication_error or (state["error"] or "").startswith("Publication not available:"):
+                    state["error"] = publication_error
                 run = run_file or publications.parent / "run.json"
+                state["run"] = {}
+                state["field"] = {"status": "unavailable"}
                 if run.is_file():
                     try:
-                        record = json.loads(run.read_text())
+                        record = json.loads(run.read_text(encoding="utf-8"))
                         if not isinstance(record, dict):
                             raise ValueError("Run metadata must be an object")
                         state["run"] = {key: record.get(key) for key in
@@ -174,7 +181,7 @@ def observe(publications, session, port=8765, width=960, height=540, run_file=No
                     if event == "play":
                         if type(payload.get("playing")) is not bool:
                             raise ValueError("playing must be true or false")
-                        state["playing"] = payload["playing"]
+                        state["playing"] = payload["playing"] and state["end"] > state["start"]
                     elif event == "seek":
                         seconds = payload.get("seconds")
                         if type(seconds) not in (int, float) or not math.isfinite(seconds):
@@ -308,7 +315,9 @@ def observe(publications, session, port=8765, width=960, height=540, run_file=No
                             if candidate is not None:
                                 previous_stage = candidate["previous"][0]
                                 state.update(selected_revision=candidate["revision"],
-                                             start=metadata["start"], end=metadata["end"], error=None)
+                                             start=metadata["start"], end=metadata["end"],
+                                             playing=state["playing"] and metadata["end"] > metadata["start"],
+                                             error=None)
                                 playhead = rendered
                                 candidate = None
                                 previous_stage.destroy()
@@ -333,6 +342,7 @@ def observe(publications, session, port=8765, width=960, height=540, run_file=No
         raise
     finally:
         httpd.shutdown()
+        httpd.server_close()
         if operation is not None:
             print("Native operation remains pending; close the observer process.", flush=True)
             os._exit(2)
