@@ -96,7 +96,7 @@ def _check():
         require(duration * time_num * fps == time_den, "Loop packet duration is not uniform")
 
     # Readback below uses a CPU pointer. Request host frames explicitly.
-    decoder = nvc.CreateSimpleDecoder(str(VIDEO), 0, 0, 0, False, outputColorType=nvc.OutputColorType.RGB)
+    decoder = nvc.CreateSimpleDecoder(encSource=str(VIDEO), useDeviceMemory=False, outputColorType=nvc.OutputColorType.RGB)
     metadata = decoder.get_stream_metadata()
     require(metadata.num_frames == count and metadata.average_fps == fps, "Decoded frame count or rate differs")
     with gpu.batch():

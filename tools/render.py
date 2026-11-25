@@ -43,11 +43,14 @@ def write_override(scene, products, res, spp, ghost, qc, out_dir=OUT_DIR,
         rel = os.path.relpath(scene, out_dir).replace("\\", "/")
     except ValueError:  # Windows scenes can live on another drive.
         rel = scene.resolve().as_posix()
+    asset = "@" + rel + "@"
+    if "@" in rel:
+        asset = "@@@" + rel.replace("@@@", "\\@@@") + "@@@"
     vis = "inherited" if ghost else "invisible"
     qc_vis = "inherited" if qc else "invisible"
     lines = f'''#usda 1.0
 (
-    subLayers = [@{rel}@]
+    subLayers = [{asset}]
 )
 
 over "World"

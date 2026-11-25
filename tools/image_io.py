@@ -1,5 +1,6 @@
 """PNG/JPEG IO through nvImageCodec, with sequence-scoped codec ownership."""
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import numpy as np
 from nvidia import nvimgcodec
@@ -76,9 +77,12 @@ class ImageCodec:
                                              quality_value=92)
         if self._encoder is None:
             self._encoder = nvimgcodec.Encoder()
-        result = self._encoder.write(str(path), rgb, params=params)
-        if result is None or not path.is_file():
-            raise RuntimeError(f"Could not encode {path}")
+        with TemporaryDirectory(dir=path.parent) as staging:
+            candidate = Path(staging) / path.name
+            result = self._encoder.write(str(candidate), rgb, params=params)
+            if result is None or not candidate.is_file() or candidate.stat().st_size == 0:
+                raise RuntimeError(f"Could not encode {path}")
+            candidate.replace(path)
 
 
 def read_rgb(path):

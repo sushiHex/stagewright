@@ -155,7 +155,7 @@ def check_codecs():
         paths.append(path)
     output = encode_mp4(paths * 12, OUT / "colors.mp4", 24)
     # Readback below uses a CPU pointer. Request host frames explicitly.
-    decoder = nvc.CreateSimpleDecoder(str(output), 0, 0, 0, False, outputColorType=nvc.OutputColorType.RGB)
+    decoder = nvc.CreateSimpleDecoder(encSource=str(output), useDeviceMemory=False, outputColorType=nvc.OutputColorType.RGB)
     metadata = decoder.get_stream_metadata()
     assert metadata.num_frames == 24 and metadata.average_fps == 24
     frames = decoder.get_batch_frames_by_index([0, 1, 22, 23])

@@ -77,7 +77,8 @@ def export(recording):
         paths, poses, seconds = data["paths"], data["poses"], data["seconds"]
         if paths.ndim != 1 or not paths.size or len(set(paths)) != len(paths):
             raise ValueError("Expected distinct recorded body paths")
-        if seconds.ndim != 1 or not seconds.size or poses.shape != (seconds.size, paths.size, 7):
+        if (seconds.ndim != 1 or not seconds.size or poses.shape != (seconds.size, paths.size, 7)
+                or record.get("samples", seconds.size) != seconds.size):
             raise ValueError("Pose dimensions do not match the sample times and body paths")
         times = seconds.astype(np.float64) * fps
         if not np.isfinite(times).all() or (np.diff(times) <= 0).any():
@@ -104,18 +105,21 @@ def export(recording):
                 parent_xform = UsdGeom.Xformable(parent)
                 if parent_xform and parent_xform.GetTimeSamples():
                     raise ValueError(f"Animated source body frames are unsupported: {path}")
+                if parent_xform and parent_xform.GetResetXformStack():
+                    break
                 parent = parent.GetParent()
             xform = UsdGeom.Xformable(stage.GetPrimAtPath(str(path)))
-            op = xform.AddTransformOp(opSuffix="physicsReplay")
+            translation = xform.AddTranslateOp(opSuffix="physicsReplay")
+            orientation = xform.AddOrientOp(UsdGeom.XformOp.PrecisionDouble, "physicsReplay")
             # Reset the stack: these samples are world poses, independent of parents.
-            xform.SetXformOpOrder([op], resetXformStack=True)
-            xforms[str(path)] = op
+            xform.SetXformOpOrder([translation, orientation], resetXformStack=True)
+            xforms[str(path)] = translation, orientation
         for time, sample, quats in zip(times, poses, rotations, strict=True):
             for path, pose, quat in zip(paths, sample, quats, strict=True):
                 x, y, z, w = map(float, quat)
-                transform = Gf.Matrix4d().SetRotate(Gf.Quatd(w, Gf.Vec3d(x, y, z)))
-                transform.SetTranslateOnly(Gf.Vec3d(*map(float, pose[:3])))
-                xforms[str(path)].Set(transform, time)
+                translation, orientation = xforms[str(path)]
+                translation.Set(Gf.Vec3d(*map(float, pose[:3])), time)
+                orientation.Set(Gf.Quatd(w, Gf.Vec3d(x, y, z)), time)
     layer = Sdf.Layer.CreateAnonymous()
     layer.TransferContent(stage.GetRootLayer())
     layer.subLayerPaths = [os.path.relpath(source, recording).replace("\\", "/")]

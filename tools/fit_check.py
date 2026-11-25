@@ -711,13 +711,15 @@ def mesh_tris(prim, xf):
     P = world_points(prim, xf)
     counts = np.asarray(mesh.GetFaceVertexCountsAttr().Get(), int)
     idx = np.asarray(mesh.GetFaceVertexIndicesAttr().Get(), int)
+    holes = set(mesh.GetHoleIndicesAttr().Get() or ())
     tris, o = [], 0
-    for c in counts:
+    for face, c in enumerate(counts):
         f = idx[o:o + c]
-        for k in range(1, c - 1):
-            tris.append((f[0], f[k], f[k + 1]))
+        if face not in holes:
+            for k in range(1, c - 1):
+                tris.append((f[0], f[k], f[k + 1]))
         o += c
-    return P[np.array(tris)]
+    return P[np.asarray(tris, dtype=int).reshape(-1, 3)]
 
 
 def point_tri_dist(p, tris):
@@ -792,15 +794,19 @@ def classify_point(tris, p):
     return "air", (up, px, nx)
 
 
-def xform_times(prim):
+def camera_times(prim):
     from pxr import UsdGeom
     times = set()
+    for name in UsdGeom.Camera.GetSchemaAttributeNames(False):
+        times.update(prim.GetAttribute(name).GetTimeSamples())
     p = prim
     while p and not p.IsPseudoRoot():
         x = UsdGeom.Xformable(p)
         if x:
             for op in x.GetOrderedXformOps():
                 times.update(op.GetAttr().GetTimeSamples())
+            if x.GetResetXformStack():
+                break
         p = p.GetParent()
     return sorted(times)
 
@@ -851,7 +857,7 @@ def check_cameras(stage, parts, car, dom_lo, dom_hi):
               if got != sorted(EXPECTED_CAMERAS) else ""))
     all_pos = []  # (camera, position) for every sample
     for cam in cams:
-        times = xform_times(cam)
+        times = camera_times(cam)
         tcs = [Usd.TimeCode(t) for t in times] if times else [Usd.TimeCode.Default()]
         pos, out, inview, dists = [], 0, 0, []
         hits = {}   # part -> Counter(classification)
@@ -898,7 +904,7 @@ def check_cameras(stage, parts, car, dom_lo, dom_hi):
                   f"{'yes' if not out else f'NO at {out} sample(s)'} | "
                   f"{100 * inview / len(tcs):.0f}% of samples | {min(dists):.0f}..{max(dists):.0f} | "
                   f"{', '.join(first_view) or 'nothing tagged'} |")
-    md.append("\nMethod: every camera position (one per authored transform time sample) is tested against each "
+    md.append("\nMethod: every camera position (one per authored camera or transform time sample) is tested against each "
               "renderable environment gprim's world AABB. A position inside an AABB is then classified against that "
               "mesh with ray parity (+Z, +X and -X rays): **material** means inside the solid, **opening** means "
               "enclosed by the shell above and on both sides, i.e. clear air inside the nozzle or collector duct, and "
@@ -962,7 +968,7 @@ def check_cameras(stage, parts, car, dom_lo, dom_hi):
             d, c, p = best
             md.append(f"\nNozzle surface clearance: the exact minimum distance from any camera sample ({len(all_pos)} "
                       f"samples, all cameras) to the nozzle mesh's {len(tris):,} triangles is **{d:.1f} cm**, "
-                      f"`{c}` at {fmt(p)}. Samples are the authored transform time samples; the path between two "
+                      f"`{c}` at {fmt(p)}. Samples use authored camera and transform times; the path between two "
                       "samples is not swept.")
             record("Every camera sample stays >= 30 cm from the nozzle surface (exact point-to-mesh distance)",
                    "PASS" if d >= 30.0 else "FAIL", f"closest {d:.1f} cm ({c})")

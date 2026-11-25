@@ -41,7 +41,9 @@ def motion_timing(product, fps, count):
     return settings["fps"] if fps is None else fps, settings["frames"] if count is None else count
 
 
-def loop_enabled(product, loop):
+def loop_enabled(product, loop, scene=SCENE):
+    if loop is not None and scene.resolve() != SCENE.resolve():
+        return bool(loop)
     settings = MOTION_SETTINGS.get(product)
     if settings is not None:
         if loop and not settings["loop"]:
@@ -67,6 +69,8 @@ def check_frame_directory(scene, product, fps, count, loop, directory):
 def check_render_directory(scene, product, fps, count, loop, directory, frames, res, spp, supersample):
     check_frame_directory(scene, product, fps, count, loop, directory)
     if directory.resolve() == frame_directory(product).resolve() and product in MOTION_SETTINGS:
+        if res[0] * 9 != res[1] * 16:
+            raise ValueError("Use a separate --out directory for a different camera aspect ratio")
         if (frames != list(range(count)) or spp < DEFAULT_SPP or supersample < DEFAULT_SUPERSAMPLE
                 or any(size < minimum for size, minimum in zip(res, DEFAULT_RESOLUTION, strict=True))):
             raise ValueError("Partial and lower-quality previews require a separate --out directory")
@@ -106,7 +110,7 @@ def render(frames, res, spp, out_dir, max_steps, scene=SCENE, product=PRODUCT,
            sample_batch=stills.DEFAULT_SAMPLE_BATCH, snapshot_poses=False, *, encode_options=None):
     frames = list(frames)
     fps, count = motion_timing(product, fps, count)
-    loop = loop_enabled(product, loop)
+    loop = loop_enabled(product, loop, scene)
     check_render_directory(scene, product, fps, count, loop, out_dir, frames, res, spp, supersample)
     canonical = out_dir.resolve() == frame_directory(product).resolve() and product in MOTION_SETTINGS
     with frame_access(out_dir):
@@ -189,7 +193,7 @@ def encode(frames_dir, gif_width, gif_fps, make_gif=False, fps=None, count=None,
 
 def _encode(frames_dir, gif_width, gif_fps, make_gif, fps, count, product, scene, loop):
     fps, count = motion_timing(product, fps, count)
-    loop = loop_enabled(product, loop)
+    loop = loop_enabled(product, loop, scene)
     settings = MOTION_SETTINGS.get(product)
     if scene.resolve() == SCENE.resolve() and settings is not None and settings["loop"] and (fps != settings["fps"] or count != settings["frames"]):
         raise ValueError(f"{product} encoding requires its authored fps and complete frame count")
@@ -268,7 +272,7 @@ def parse_args(argv=None):
     a.fps, a.count = motion_timing(a.product, a.fps, a.count)
     a.out = frame_directory(a.product) if a.out is None else a.out
     try:
-        a.loop = loop_enabled(a.product, a.loop)
+        a.loop = loop_enabled(a.product, a.loop, a.scene)
         check_frame_directory(a.scene, a.product, a.fps, a.count, a.loop, a.out)
     except ValueError as error:
         ap.error(str(error))

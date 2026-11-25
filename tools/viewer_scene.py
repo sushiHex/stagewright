@@ -1,8 +1,13 @@
 """Prepare an app-owned streaming render product without changing the source stage."""
 import math
+import sys
 from pathlib import Path
 
 from pxr import Gf, Sdf, Usd, UsdGeom, UsdPhysics, UsdRender, UsdShade
+
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from physics_usd import export_new_layer
 
 
 def prepare(source: Path, destination: Path, width=960, height=540, spp=16):
@@ -27,10 +32,13 @@ def prepare(source: Path, destination: Path, width=960, height=540, spp=16):
     UsdGeom.SetStageMetersPerUnit(stage, UsdGeom.GetStageMetersPerUnit(original))
     UsdPhysics.SetStageKilogramsPerUnit(stage, UsdPhysics.GetStageKilogramsPerUnit(original))
     rate = original.GetTimeCodesPerSecond()
+    start, end = original.GetStartTimeCode(), original.GetEndTimeCode()
+    if not all(map(math.isfinite, (rate, start, end))) or rate <= 0 or end < start:
+        raise ValueError("The source stage has invalid replay timing")
     stage.SetTimeCodesPerSecond(rate)
     stage.SetFramesPerSecond(original.GetFramesPerSecond())
-    stage.SetStartTimeCode(original.GetStartTimeCode())
-    stage.SetEndTimeCode(original.GetEndTimeCode())
+    stage.SetStartTimeCode(start)
+    stage.SetEndTimeCode(end)
     if original.GetDefaultPrim():
         stage.SetDefaultPrim(stage.GetPrimAtPath(original.GetDefaultPrim().GetPath()))
     UsdGeom.Scope.Define(stage, "/StagewrightView")
@@ -85,12 +93,11 @@ def prepare(source: Path, destination: Path, width=960, height=540, spp=16):
     product.CreateOrderedVarsRel().SetTargets([color.GetPath(), bgra.GetPath()])
 
     destination.parent.mkdir(parents=True, exist_ok=True)
-    with destination.open("x", encoding="utf-8", newline="\n") as stream:
-        stream.write(stage.GetRootLayer().ExportToString())
+    export_new_layer(stage.GetRootLayer(), destination)
     return {"product": str(product.GetPath()), "var": str(bgra.GetPath()),
             "width": width, "height": height,
-            "start": original.GetStartTimeCode() / rate,
-            "end": original.GetEndTimeCode() / rate,
+            "start": start / rate,
+            "end": end / rate,
             "source": str(source), "camera": str(camera_path)}
 
 

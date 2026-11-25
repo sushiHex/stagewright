@@ -93,12 +93,14 @@ def joint_errors(stage, paths, positions, rots):
         if not p.IsA(UsdPhysics.Joint):
             continue
         j = UsdPhysics.Joint(p)
+        axis_attr = p.GetAttribute("physics:axis")
+        joint_axis = Gf.Vec3d.Axis("XYZ".index(axis_attr.Get()) if axis_attr else 0)
         world, axes = [], []
         for side in (0, 1):
             rel = getattr(j, f"GetBody{side}Rel")().GetTargets()
             local = np.array(getattr(j, f"GetLocalPos{side}Attr")().Get(), dtype=float)
             quat = getattr(j, f"GetLocalRot{side}Attr")().Get()
-            axis = np.array(Gf.Rotation(quat).TransformDir(Gf.Vec3d(1, 0, 0)))
+            axis = np.array(Gf.Rotation(quat).TransformDir(joint_axis))
             if not rel:
                 world.append(np.broadcast_to(local, (n, 3)))
                 axes.append(np.broadcast_to(axis, (n, 3)))
@@ -261,8 +263,10 @@ def assess(result, out, design, control=False):
                               [c["court_x_m"][1], c["court_y_m"][1]])
         if area > .01:
             obstructions.append(dict(path=str(n), projected_area_m2=area, world_min=a.tolist(), world_max=b.tolist()))
-    roof_angles = np.degrees(2*np.arccos(np.clip(np.abs(poses[:, ri, 6]), 0, 1)))
-    deck_angles = np.degrees(2*np.arccos(np.clip(np.abs(poses[:, di, 6]), 0, 1)))
+    # The trace of a relative rotation gives travel from the authored pose.
+    relative_trace = np.einsum("tbij,bij->tb", rots, init_r)
+    angles = np.degrees(np.arccos(np.clip((relative_trace - 1) / 2, -1, 1)))
+    roof_angles, deck_angles = angles[:, ri], angles[:, di]
     prediction = None
     if control:
         prediction = {
